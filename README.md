@@ -44,6 +44,8 @@ Le correctif Sony existe dans le noyau d'origine (commit `cfd1489` du noyau Sail
 |---|---|
 | `pmos/device-sony-akatsuki/` | Paquet appareil postmarketOS (`deviceinfo`, `APKBUILD`) — brouillon |
 | `pmos/firmware-sony-akatsuki/` | Paquet des firmwares, depuis le dépôt de Petr Hodina — brouillon |
+| `arch/linux-sony-akatsuki-pmos/` | PKGBUILD Arch : noyau 7.1 de postmarketOS reconditionné (refuse de se construire si l'UFS est actif) |
+| `scripts/fetch-pmos-kernel.sh` | Trouve et télécharge la version actuelle du noyau pmOS, met à jour le PKGBUILD |
 | `scripts/check-dtb-ufs.sh` | Garde-fou : refuse tout DTB où l'UFS est actif |
 | `scripts/make-bootimg.sh` | Assemble un `boot.img` (noyau + DTB + initramfs) avec les bons offsets |
 | `docs/etat-des-lieux.md` | Ce qui fonctionne déjà, ce qui manque, sources |
@@ -78,11 +80,40 @@ telnet 172.16.42.1                     # shell de débogage par USB
 
 ## Piste 2 — Arch Linux ARM
 
-Même noyau et même DTB, rootfs Arch Linux ARM aarch64 sur la carte SD :
+Même noyau que postmarketOS (`linux-postmarketos-qcom-sdm845`, 7.1), reconditionné
+en paquet Arch, avec un rootfs Arch Linux ARM aarch64 sur la carte SD.
+
+**1. Récupérer le noyau pmOS et construire le paquet Arch** (sur le PC) :
 
 ```sh
-scripts/make-bootimg.sh Image.gz sdm845-sony-xperia-tama-akatsuki.dtb \
-    initramfs.img boot-arch.img "root=LABEL=ALARM_ROOT rootwait rw"
+scripts/fetch-pmos-kernel.sh                 # télécharge le .apk, met à jour pkgver et sha256sums
+cd arch/linux-sony-akatsuki-pmos
+sed 's/^CARCH=.*/CARCH="aarch64"/' /etc/makepkg.conf > /tmp/makepkg-aarch64.conf
+makepkg -A --config /tmp/makepkg-aarch64.conf
+```
+
+Aucune compilation : le binaire de postmarketOS est repris tel quel. La construction
+échoue volontairement si le DTB du XZ3 active l'UFS (`check()` et `package()`).
+
+**2. Installer le paquet dans le rootfs Arch** (carte SD montée sur `/mnt`,
+`qemu-user-static` nécessaire sur un PC x86) :
+
+```sh
+sudo cp linux-sony-akatsuki-pmos-*.pkg.tar.zst /mnt/root/
+sudo arch-chroot /mnt pacman -U /root/linux-sony-akatsuki-pmos-*.pkg.tar.zst
+```
+
+Le hook pacman de mkinitcpio copie le noyau en `/boot/vmlinuz-linux-sony-akatsuki-pmos`
+et génère `/boot/initramfs-linux-sony-akatsuki-pmos.img`.
+
+**3. Assembler et démarrer le `boot.img`** :
+
+```sh
+scripts/make-bootimg.sh \
+    /mnt/boot/vmlinuz-linux-sony-akatsuki-pmos \
+    /mnt/boot/dtbs/qcom/sdm845-sony-xperia-tama-akatsuki.dtb \
+    /mnt/boot/initramfs-linux-sony-akatsuki-pmos.img \
+    boot-arch.img "root=LABEL=ALARM_ROOT rootwait rw"
 fastboot boot boot-arch.img
 ```
 

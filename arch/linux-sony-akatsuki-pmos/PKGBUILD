@@ -1,0 +1,95 @@
+# Maintainer: Fanasina RANDRIATSARAFARA
+#
+# Noyau SDM845 de postmarketOS (linux-postmarketos-qcom-sdm845), reconditionné
+# pour Arch Linux ARM sur Sony Xperia XZ3 (akatsuki).
+#
+# Aucune compilation : on reprend le binaire construit par postmarketOS.
+# Récupérer d'abord le .apk et remplir pkgver / sha256sums avec :
+#     ../../scripts/fetch-pmos-kernel.sh
+#
+# /!\ La construction ÉCHOUE volontairement si le DTB du XZ3 active l'UFS
+#     (risque de brick définitif). Voir README.md.
+
+_pmospkg=linux-postmarketos-qcom-sdm845
+_pmosver=7.1_rc1-r4
+_dtb=qcom/sdm845-sony-xperia-tama-akatsuki.dtb
+
+pkgname=linux-sony-akatsuki-pmos
+pkgver=7.1_rc1_r4
+pkgrel=1
+pkgdesc="Noyau mainline SDM845 de postmarketOS pour Sony Xperia XZ3 (akatsuki)"
+arch=('aarch64')
+url="https://gitlab.postmarketos.org/postmarketOS/pmaports"
+license=('GPL-2.0-only')
+depends=('mkinitcpio')
+makedepends=('dtc')
+optdepends=('mkbootimg: assembler le boot.img (scripts/make-bootimg.sh)')
+provides=('linux')
+options=('!strip' '!debug')
+source=("$_pmospkg-$_pmosver.apk")
+noextract=("$_pmospkg-$_pmosver.apk")
+sha256sums=('SKIP')
+
+prepare() {
+	rm -rf apk && mkdir apk
+	# Un .apk est une suite de flux gzip (signature, métadonnées, données) ;
+	# -i fait lire à tar tous les segments.
+	gzip -dc "$_pmospkg-$_pmosver.apk" | tar -xi -C apk -f -
+}
+
+check() {
+	# Garde-fou UFS, même logique que scripts/check-dtb-ufs.sh.
+	local dts node status
+	dts="$(dtc -I dtb -O dts "apk/boot/dtbs/$_dtb" 2>/dev/null)" || {
+		echo "DTB introuvable ou illisible : boot/dtbs/$_dtb" >&2
+		return 1
+	}
+	for node in "ufshc@1d84000" "phy@1d87000"; do
+		status="$(printf '%s\n' "$dts" | awk -v node="$node" '
+			!inb && $0 ~ "^[[:space:]]*" node "[[:space:]]*\\{" { inb = 1; depth = 0 }
+			inb {
+				if (depth == 1 && $0 ~ /^[[:space:]]*status[[:space:]]*=/) {
+					match($0, /"[^"]*"/); print substr($0, RSTART + 1, RLENGTH - 2)
+				}
+				depth += gsub(/\{/, "{"); depth -= gsub(/\}/, "}")
+				if (depth <= 0) exit
+			}')"
+		if [[ $status != disabled ]]; then
+			echo "DANGER : $node a status='${status:-absent}' dans $_dtb." >&2
+			echo "Ce noyau risque de briquer le Xperia XZ3. Construction annulée." >&2
+			return 1
+		fi
+		echo "OK $node : status = \"disabled\""
+	done
+}
+
+package() {
+	# Garde-fou répété ici : « makepkg --nocheck » ne doit pas pouvoir le sauter.
+	check || return 1
+
+	cd apk
+
+	local kver
+	kver="$(ls lib/modules 2>/dev/null | head -n1)"
+	[[ -n $kver ]] || { echo "Aucun dossier lib/modules dans le paquet pmOS." >&2; return 1; }
+
+	# DTB du XZ3 (le seul utile ici)
+	install -Dm644 "boot/dtbs/$_dtb" "$pkgdir/boot/dtbs/$_dtb"
+
+	# Modules : Arch utilise /usr/lib/modules (/lib est un lien symbolique).
+	# Avec vmlinuz + pkgbase dans ce dossier, le hook pacman de mkinitcpio copie
+	# le noyau en /boot/vmlinuz-$pkgname et génère l'initramfs à l'installation.
+	install -d "$pkgdir/usr/lib/modules"
+	cp -a "lib/modules/$kver" "$pkgdir/usr/lib/modules/"
+	rm -f "$pkgdir/usr/lib/modules/$kver"/{build,source}
+	install -Dm644 boot/vmlinuz "$pkgdir/usr/lib/modules/$kver/vmlinuz"
+	echo "$pkgname" > "$pkgdir/usr/lib/modules/$kver/pkgbase"
+
+	# Preset mkinitcpio -> /boot/initramfs-$pkgname.img
+	install -Dm644 /dev/stdin "$pkgdir/etc/mkinitcpio.d/$pkgname.preset" <<EOF
+# Preset mkinitcpio pour $pkgname (noyau $kver)
+ALL_kver="$kver"
+PRESETS=('default')
+default_image="/boot/initramfs-$pkgname.img"
+EOF
+}

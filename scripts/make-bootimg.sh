@@ -5,7 +5,8 @@
 # Le DTB est vérifié par check-dtb-ufs.sh avant tout assemblage.
 #
 # Usage :
-#   scripts/make-bootimg.sh <Image.gz> <fichier.dtb> <initramfs> <sortie.img> ["cmdline"]
+#   scripts/make-bootimg.sh <noyau> <fichier.dtb> <initramfs> <sortie.img> ["cmdline"]
+#   (noyau : Image, Image.gz ou vmlinuz ; compressé automatiquement si besoin)
 #
 # Exemple (rootfs Arch sur la carte SD) :
 #   scripts/make-bootimg.sh Image.gz sdm845-sony-xperia-tama-akatsuki.dtb \
@@ -17,7 +18,7 @@
 set -eu
 
 if [ "$#" -lt 4 ]; then
-	sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+	awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"
 	exit 2
 fi
 
@@ -40,8 +41,15 @@ fi
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# Le bootloader Sony attend le DTB collé à la suite du noyau (appended DTB).
-cat "$kernel" "$dtb" > "$tmp/Image.gz-dtb"
+# Le bootloader attend un noyau compressé en gzip suivi du DTB (Image.gz-dtb).
+# Si le noyau fourni n'est pas déjà en gzip (magie 1f 8b), on le compresse.
+if [ "$(od -An -tx1 -N2 "$kernel" | tr -d ' \n')" = "1f8b" ]; then
+	cp "$kernel" "$tmp/Image.gz"
+else
+	echo "Noyau non compressé : compression gzip..."
+	gzip -9nc "$kernel" > "$tmp/Image.gz"
+fi
+cat "$tmp/Image.gz" "$dtb" > "$tmp/Image.gz-dtb"
 
 mkbootimg \
 	--kernel "$tmp/Image.gz-dtb" \
