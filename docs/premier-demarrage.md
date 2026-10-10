@@ -60,6 +60,21 @@ système du PC, et demande de retaper le nom du périphérique. Il crée une par
 [`rootfs/`](../rootfs) (réseau USB, surveillance de la connexion USB, `fstab`, nom
 d'hôte), et active `sshd` et `systemd-networkd`.
 
+### Variante : préparer la carte dans le téléphone, par adb
+
+Carte SD dans le téléphone, LineageOS démarré, **Options pour les développeurs →
+Débogage root** activé :
+
+```sh
+scripts/prepare-sdcard-adb.sh ArchLinuxARM-aarch64-latest.tar.gz \
+    linux-postmarketos-qcom-sdm845-7.1_rc1-r4.apk
+```
+
+Le script n'accepte que `/dev/block/mmcblk0` et vérifie que c'est bien une carte SD
+(`/sys/block/mmcblk0/device/type` = `SD`) : dans le téléphone, `/dev/block/sda…sdf` sont
+la **mémoire interne** (Android et bootloader). Ensuite, Android peut signaler une
+« carte SD non prise en charge » : **ne pas** la formater depuis Android.
+
 ## 3. Construire le boot.img
 
 ```sh

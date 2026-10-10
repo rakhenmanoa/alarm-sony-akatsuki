@@ -1,0 +1,167 @@
+#!/bin/sh
+# prepare-sdcard-adb.sh — Prépare la carte micro-SD **dans le téléphone**, sous
+# LineageOS, par adb (même résultat que prepare-sdcard.sh sur un PC).
+# EFFACE ENTIÈREMENT LA CARTE SD. Ne touche jamais à la mémoire interne.
+#
+# Usage (sur le PC, téléphone sous LineageOS, branché, débogage USB actif) :
+#   scripts/prepare-sdcard-adb.sh <ArchLinuxARM-aarch64-latest.tar.gz> \
+#       <linux-postmarketos-qcom-sdm845-VERSION.apk>
+#
+# Prérequis côté téléphone : Options pour les développeurs → « Débogage root »
+# (adb root). Outils Android utilisés : sgdisk, mke2fs, toybox tar, gzip, sm.
+#
+# ⚠️ Dans le téléphone, /dev/block/sda…sdf = mémoire interne UFS (Android ET
+# bootloader). La carte SD est /dev/block/mmcblk0. Le script refuse tout autre
+# périphérique et vérifie qu'il s'agit bien d'une carte SD avant d'effacer.
+
+set -eu
+
+die() { echo "Erreur : $*" >&2; exit 1; }
+
+[ "$#" -eq 2 ] || { awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 2; }
+tarball="$1"; apk="$2"
+here="$(cd "$(dirname "$0")" && pwd)"
+overlay="$here/../rootfs"
+DEV=/dev/block/mmcblk0
+PART=/dev/block/mmcblk0p1
+MNT=/data/local/tmp/alarm-sd
+TMPTAR=/data/local/tmp/alarm-rootfs.tar.gz
+
+command -v adb >/dev/null 2>&1 || die "adb introuvable sur le PC."
+[ -f "$tarball" ] || die "archive Arch Linux ARM introuvable : $tarball"
+[ -f "$apk" ]     || die "paquet noyau pmOS introuvable : $apk"
+[ -d "$overlay" ] || die "dossier rootfs/ du dépôt introuvable : $overlay"
+
+# adb shell renvoie « \r\n » sur certaines versions : on nettoie
+ash() { adb shell "$@" | tr -d '\r'; }
+
+# ------------------------------------------------------------- adb root ---
+echo "== Connexion adb (root)"
+adb get-state >/dev/null 2>&1 || die "aucun téléphone vu par adb (débogage USB activé ? autorisé ?)."
+adb root >/dev/null 2>&1 || true
+sleep 2
+adb wait-for-device
+[ "$(ash id -u)" = "0" ] || die "adb n'est pas root. Activer « Débogage root » dans les options pour les développeurs."
+case "$(ash getprop ro.product.device) $(ash getprop ro.product.vendor.device)" in
+	*akatsuki*|*H8416*|*H9436*|*H9493*|*SO-01L*|*SOV39*|*801SO*) ;;
+	*) die "ce téléphone n'est pas un Xperia XZ3 (akatsuki) : refusé." ;;
+esac
+
+# ---------------------------------------------- sécurité : c'est la carte SD --
+echo "== Vérification de la carte SD"
+[ "$(ash "[ -b $DEV ] && echo oui")" = "oui" ] || die "$DEV absent : carte SD insérée ?"
+sdtype="$(ash cat /sys/block/mmcblk0/device/type 2>/dev/null)"
+[ "$sdtype" = "SD" ] || die "/sys/block/mmcblk0/device/type = « $sdtype » (attendu : SD) : refusé."
+sectors="$(ash cat /sys/block/mmcblk0/size)"
+size=$((sectors * 512))
+[ "$size" -ge $((4 * 1024 * 1024 * 1024)) ] || die "carte de moins de 4 Go."
+[ "$size" -le $((512 * 1024 * 1024 * 1024)) ] || die "carte de plus de 512 Go : refusé par sécurité."
+name="$(ash cat /sys/block/mmcblk0/device/name 2>/dev/null)"
+
+echo
+echo "Carte SD : $DEV — $((size / 1000000000)) Go — « $name »"
+echo "(la mémoire interne du téléphone, /dev/block/sd*, n'est pas concernée)"
+echo
+echo "TOUT LE CONTENU DE LA CARTE SD VA ÊTRE EFFACÉ."
+printf 'Pour confirmer, taper exactement « EFFACER LA CARTE SD » : '
+read -r answer
+[ "$answer" = "EFFACER LA CARTE SD" ] || die "confirmation incorrecte, rien n'a été modifié."
+
+# ------------------------------------------------- démonter (Android / vold) --
+echo "== Démontage de la carte par Android"
+for vol in $(ash sm list-volumes public 2>/dev/null | awk '/^public:179/ { print $1 }'); do
+	ash sm unmount "$vol" >/dev/null 2>&1 || true
+done
+sleep 2
+for m in $(ash "grep -E '^/dev/block/(vold/public:179|mmcblk0)' /proc/mounts | cut -d' ' -f2"); do
+	ash umount "$m" >/dev/null 2>&1 || true
+done
+if [ -n "$(ash "grep -E '^/dev/block/(vold/public:179|mmcblk0)' /proc/mounts")" ]; then
+	die "la carte est encore montée par Android. Paramètres → Stockage → Éjecter la carte, puis relancer."
+fi
+
+# -------------------------------------------------------- partitionnement ---
+echo "== Partitionnement (GPT, une partition Linux)"
+ash sgdisk --zap-all "$DEV" >/dev/null 2>&1 || true
+ash sgdisk -n 1:0:0 -t 1:8300 -c 1:ALARM_ROOT "$DEV" || die "sgdisk a échoué."
+ok=""
+for i in 1 2 3 4 5 6 7 8 9 10; do
+	if [ "$(ash "[ -b $PART ] && echo oui")" = "oui" ]; then ok=1; break; fi
+	ash "blockdev --rereadpt $DEV" >/dev/null 2>&1 || true
+	sleep 1
+done
+[ -n "$ok" ] || die "$PART n'apparaît pas. Retirer et remettre la carte, puis relancer."
+# Android peut tenter de monter la nouvelle partition : on s'assure que non
+for m in $(ash "grep '^$PART ' /proc/mounts | cut -d' ' -f2"); do ash umount "$m" || true; done
+
+echo "== Formatage ext4 (ALARM_ROOT)"
+ash mke2fs -F -t ext4 -L ALARM_ROOT "$PART" >/dev/null || die "mke2fs a échoué."
+
+echo "== Montage dans le téléphone"
+ash "mkdir -p $MNT && mount -t ext4 $PART $MNT" || die "montage impossible."
+cleanup() { adb shell "umount $MNT 2>/dev/null; rmdir $MNT 2>/dev/null; rm -f $TMPTAR" >/dev/null 2>&1 || true; }
+trap cleanup EXIT
+
+# ----------------------------------------------------------- Arch Linux ARM --
+echo "== Envoi d'Arch Linux ARM au téléphone"
+adb push "$tarball" "$TMPTAR"
+echo "== Extraction sur la carte (quelques minutes)"
+ash "cd $MNT && gzip -dc $TMPTAR | tar -xpf - && echo EXTRACTION_OK" | grep -q EXTRACTION_OK || \
+	die "extraction de l'archive impossible."
+ash rm -f "$TMPTAR"
+[ "$(ash "[ -x $MNT/usr/lib/systemd/systemd ] && echo oui")" = "oui" ] || \
+	die "systemd absent après extraction : archive incomplète ?"
+
+# ------------------------------------------------------------- noyau pmOS ---
+echo "== Modules du noyau pmOS"
+work="$(mktemp -d)"
+trap 'cleanup; rm -rf "$work"' EXIT
+gzip -dc "$apk" | tar -xi -C "$work" -f - 2>/dev/null || true
+for moddir in "$work/usr/lib/modules" "$work/lib/modules"; do
+	[ -d "$moddir" ] && break
+done
+kver="$(ls "$moddir" | head -n1)"
+[ -n "$kver" ] || die "aucun module dans le paquet pmOS."
+rm -f "$moddir/$kver/build" "$moddir/$kver/source"
+if command -v depmod >/dev/null 2>&1; then
+	mkdir -p "$work/depmod/lib" "$work/depmod/usr/lib"
+	ln -s "$moddir" "$work/depmod/lib/modules"
+	ln -s "$moddir" "$work/depmod/usr/lib/modules"
+	depmod -b "$work/depmod" "$kver" && echo "   depmod OK ($kver)"
+fi
+ash mkdir -p "$MNT/usr/lib/modules" "$MNT/boot/akatsuki"
+adb push "$moddir/$kver" "$MNT/usr/lib/modules/" >/dev/null
+adb push "$work/boot/vmlinuz" "$MNT/boot/akatsuki/vmlinuz-$kver" >/dev/null
+adb push "$work/boot/dtbs/qcom/sdm845-sony-xperia-tama-akatsuki.dtb" "$MNT/boot/akatsuki/" >/dev/null
+ash chown -R 0:0 "$MNT/usr/lib/modules/$kver" "$MNT/boot/akatsuki"
+
+# ---------------------------------------------------------- configuration ---
+echo "== Configuration (réseau USB, fstab, nom d'hôte)"
+for e in "$overlay"/*; do
+	adb push "$e" "$MNT/" >/dev/null        # fusionne avec etc/ et usr/ existants
+done
+ash chown -R 0:0 "$MNT/etc/systemd/network" "$MNT/etc/systemd/system" "$MNT/usr/local/bin" \
+	"$MNT/etc/fstab" "$MNT/etc/hostname"
+ash chmod 644 "$MNT/etc/fstab" "$MNT/etc/hostname" "$MNT/etc/systemd/network/50-usb0.network" \
+	"$MNT/etc/systemd/system/akatsuki-usb-gadget.service" "$MNT/etc/systemd/system/akatsuki-usb-watch.service"
+ash chmod 755 "$MNT/usr/local/bin/akatsuki-usb-gadget"
+W="$MNT/etc/systemd/system/multi-user.target.wants"
+ash mkdir -p "$W"
+ash ln -sf /etc/systemd/system/akatsuki-usb-gadget.service "$W/akatsuki-usb-gadget.service"
+ash ln -sf /etc/systemd/system/akatsuki-usb-watch.service "$W/akatsuki-usb-watch.service"
+for svc in sshd systemd-networkd; do
+	if [ "$(ash "[ -e $MNT/usr/lib/systemd/system/$svc.service ] && echo oui")" = "oui" ]; then
+		ash ln -sf "/usr/lib/systemd/system/$svc.service" "$W/$svc.service"
+	fi
+done
+
+ash sync
+ash umount "$MNT"
+ash rmdir "$MNT" 2>/dev/null || true
+trap 'rm -rf "$work"' EXIT
+
+echo
+echo "Carte SD prête (noyau $kver). Android affichera peut-être « carte SD non prise"
+echo "en charge » : NE PAS la formater depuis Android, l'ignorer."
+echo "Suite : flasher boot-arch.img dans boot_b (voir docs/premier-demarrage.md)."
+echo "Identifiants par défaut : alarm/alarm et root/root (à changer dès le premier accès)."

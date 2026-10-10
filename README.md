@@ -52,6 +52,7 @@ Le correctif Sony existe dans le noyau d'origine (commit `cfd1489` du noyau Sail
 | `scripts/patch-dtb-akatsuki.py` | Secours sans `dtc` : même résultat que `build-dtb.sh` (vérifié identique), en Python seul |
 | `scripts/check-dtb-ufs.sh` | Garde-fou : refuse tout DTB où l'UFS est actif |
 | `scripts/make-bootimg.sh` | Assemble un `boot.img` (noyau + DTB + initramfs) avec les bons offsets |
+| `scripts/prepare-sdcard-adb.sh` | Même chose, carte **dans le téléphone** sous LineageOS (adb root) ; refuse tout sauf la carte SD |
 | `scripts/prepare-sdcard.sh` | Prépare la carte micro-SD : Arch Linux ARM + modules pmOS + réseau USB (nombreux garde-fous) |
 | `rootfs/` | Configuration copiée sur la carte : gadget USB NCM et surveillance de la connexion, `systemd-networkd` (172.16.42.1), `fstab`, nom d'hôte |
 | `docs/etat-des-lieux.md` | Ce qui fonctionne déjà, ce qui manque, sources |
