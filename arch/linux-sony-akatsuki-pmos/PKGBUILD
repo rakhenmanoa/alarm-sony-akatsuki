@@ -69,9 +69,14 @@ package() {
 
 	cd apk
 
-	local kver
-	kver="$(ls lib/modules 2>/dev/null | head -n1)"
-	[[ -n $kver ]] || { echo "Aucun dossier lib/modules dans le paquet pmOS." >&2; return 1; }
+	# pmOS place les modules dans usr/lib/modules (usr-merge) ; les anciens
+	# paquets utilisaient lib/modules. On accepte les deux.
+	local moddir kver
+	for moddir in usr/lib/modules lib/modules; do
+		[[ -d $moddir ]] && break
+	done
+	kver="$(ls "$moddir" 2>/dev/null | head -n1)"
+	[[ -n $kver ]] || { echo "Aucun dossier de modules dans le paquet pmOS." >&2; return 1; }
 
 	# DTB du XZ3 (le seul utile ici)
 	install -Dm644 "boot/dtbs/$_dtb" "$pkgdir/boot/dtbs/$_dtb"
@@ -80,7 +85,7 @@ package() {
 	# Avec vmlinuz + pkgbase dans ce dossier, le hook pacman de mkinitcpio copie
 	# le noyau en /boot/vmlinuz-$pkgname et génère l'initramfs à l'installation.
 	install -d "$pkgdir/usr/lib/modules"
-	cp -a "lib/modules/$kver" "$pkgdir/usr/lib/modules/"
+	cp -a "$moddir/$kver" "$pkgdir/usr/lib/modules/"
 	rm -f "$pkgdir/usr/lib/modules/$kver"/{build,source}
 	install -Dm644 boot/vmlinuz "$pkgdir/usr/lib/modules/$kver/vmlinuz"
 	echo "$pkgname" > "$pkgdir/usr/lib/modules/$kver/pkgbase"
