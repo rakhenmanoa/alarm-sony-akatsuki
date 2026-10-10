@@ -28,7 +28,7 @@ provides=('linux')
 options=('!strip' '!debug')
 source=("$_pmospkg-$_pmosver.apk")
 noextract=("$_pmospkg-$_pmosver.apk")
-sha256sums=('SKIP')
+sha256sums=('d0b4b950a500cede73fe5ce094060b1f9d608e3b4cbcb9d59bf2d876b2dc9804')
 
 prepare() {
 	rm -rf apk && mkdir apk
