@@ -17,13 +17,27 @@ de l'étape 1 (écran en simple-framebuffer) ; l'UFS est vérifié désactivé.
 
 ## Lancer
 
-Noter d'abord le slot de LineageOS : `fastboot getvar current-slot`.
-
-Téléphone éteint, **Volume haut + câble USB** (LED bleue), puis :
+⚠️ **`fastboot boot` ne suffit pas** : le bootloader Sony applique toujours le `dtbo`
+du slot actif (celui d'Android) au DTB mainline, et le noyau plante avant tout
+affichage (vérifié le 10/10/2026 : retour en fastboot / recovery, rien sur l'USB).
+Il faut un slot avec un `dtbo` **vide**. On utilise le slot inutilisé, LineageOS
+reste intact dans l'autre :
 
 ```sh
-fastboot boot boot-test-noyau.img
+fastboot getvar current-slot            # ex. « a » = LineageOS
+fastboot flash boot_b boot-test-noyau.img
+fastboot erase dtbo_b
+fastboot --set-active=b
+fastboot reboot
 ```
+
+Retour à LineageOS : `fastboot --set-active=a && fastboot reboot`.
+(Sauvegarder d'abord `boot_b` et `dtbo_b` depuis Android avec `adb root` + `adb pull`
+permet de remettre le slot B à l'identique.)
+
+**Résultat du 10/10/2026 (XZ3 H8416, noyau pmOS `7.1_rc1-r4`)** : ✅ démarrage,
+gadget USB `18d1:d001` vu par le PC environ 14 s après la sortie du fastboot,
+`ttyACM0` et réseau NCM fonctionnels.
 
 ## Lire le résultat
 
