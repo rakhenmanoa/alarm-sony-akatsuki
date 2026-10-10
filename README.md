@@ -58,6 +58,7 @@ Le correctif Sony existe dans le noyau d'origine (commit `cfd1489` du noyau Sail
 | `docs/noyau-pmos-7.1.md` | Analyse du noyau pmOS 7.1 et de son DTB (décompilé dans `docs/dts/`) |
 | `docs/patches-petr-hodina.md` | Inventaire des patches de Petr Hodina (fusionnés, en attente, à récupérer) |
 | `test-boot/` | **Test le plus simple** : le noyau démarre-t-il ? (initramfs de 115 Ko, journal du noyau par USB, sans carte SD) |
+| `docs/premier-demarrage-resultats.md` | **Résultats du premier démarrage réel** : ce qui marche, ce qui manque, pièges du bootloader |
 | `docs/premier-demarrage.md` | **Premier démarrage pas à pas** : carte SD, DTB, `fastboot boot`, SSH par USB |
 | `docs/etape1-ecran-charge.md` | Étape 1 : écran + charge, procédure de test et ce qu'il faut observer |
 | `patches/reference-hodina-2023/` | Patches de 2023 récupérés, conservés tels quels avec leur analyse |
@@ -147,7 +148,8 @@ puis remplacer le rootfs par Arch.
 
 ## État
 
-Brouillons non testés. Voir les tickets / issues pour l'avancement.
+10/10/2026 : **le noyau mainline 7.1 démarre sur le XZ3** (carte SD, USB, réseau USB, boutons).
+Écran pas encore. Détails : [docs/premier-demarrage-resultats.md](docs/premier-demarrage-resultats.md).
 
 ## Crédits
 

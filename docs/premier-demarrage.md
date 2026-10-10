@@ -1,5 +1,12 @@
 # Premier démarrage : Arch Linux ARM sur carte micro-SD
 
+> ⚠️ **À revoir après l'essai réel du 10/10/2026** (voir
+> [premier-demarrage-resultats.md](premier-demarrage-resultats.md)) :
+> 1. `fastboot boot` ne marche pas : utiliser le slot B avec `dtbo_b` effacé ;
+> 2. le bootloader ajoute `root=/dev/dm-0` après notre ligne de commande, donc
+>    l'approche « initramfs vide + `root=` » ci-dessous ne peut pas fonctionner :
+>    il faut un initramfs qui monte la carte SD lui-même.
+
 Objectif : démarrer le noyau pmOS 7.1 **sans rien flasher**, avec Arch Linux ARM sur la
 carte SD, l'écran en console (simple-framebuffer) et un accès SSH par le câble USB.
 
