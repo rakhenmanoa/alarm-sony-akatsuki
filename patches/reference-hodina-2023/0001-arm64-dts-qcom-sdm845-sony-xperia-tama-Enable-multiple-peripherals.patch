@@ -1,0 +1,78 @@
+From 9c5b955432ad74e6d40641e594a4605b889e4ce4 Mon Sep 17 00:00:00 2001
+From: Petr Hodina <phodina@protonmail.com>
+Date: Sat, 5 Aug 2023 02:33:49 +0200
+Subject: [PATCH] arm64: dts: qcom: sdm845-sony-xperia-tama: Enable multiple
+ peripherals.
+
+---
+ .../dts/qcom/sdm845-sony-xperia-tama.dtsi     | 41 +++++++++++++++++++
+ 1 file changed, 41 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi b/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi
+index b485f523614b..669fc2242ed7 100644
+--- a/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi
++++ b/arch/arm64/boot/dts/qcom/sdm845-sony-xperia-tama.dtsi
+@@ -104,6 +104,11 @@ &adsp_pas {
+ 	status = "okay";
+ };
+ 
++&adsp_pas {
++	status = "okay";
++	firmware-name = "qcom/sdm845/Sony/tama/adsp.mbn";
++};
++
+ &apps_rsc {
+ 	regulators-0 {
+ 		compatible = "qcom,pm8998-rpmh-regulators";
+@@ -406,6 +411,20 @@ &dsi0_phy {
+ 	status = "okay";
+ };
+ 
++&cdsp_pas {
++	status = "okay";
++	firmware-name = "qcom/sdm845/Sony/tama/cdsp.mbn";
++};
++
++&gpu {
++	status = "okay";
++
++	zap-shader {
++		memory-region = <&gpu_mem>;
++		firmware-name = "qcom/sdm845/Sony/tama/a630_zap.mbn";
++	};
++};
++
+ &gcc {
+ 	protected-clocks = <GCC_QSPI_CORE_CLK>,
+ 			<GCC_QSPI_CORE_CLK_SRC>,
+@@ -573,6 +592,28 @@ &pmi8998_charger {
+ };
+ 
+ 
++&ipa {
++	status = "okay";
++
++	memory-region = <&ipa_fw_mem>;
++	firmware-name = "qcom/sdm845/Sony/tama/ipa_fws.mbn";
++};
++
++&slpi_pas {
++	status = "okay";
++	firmware-name = "qcom/sdm845/Sony/tama/slpi.mbn";
++};
++
++&mdss {
++	status = "okay";
++};
++
++/* Modem/wifi */
++&mss_pil {
++	status = "okay";
++	firmware-name = "qcom/sdm845/Sony/tama/mba.mbn", "qcom/sdm845/Sony/tama/modem.mbn";
++};
++
+ &qupv3_id_0 {
+ 	status = "okay";
+ };
+-- 
+GitLab
