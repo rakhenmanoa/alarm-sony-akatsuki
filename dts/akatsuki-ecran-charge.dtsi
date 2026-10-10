@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Étape 1 du portage Xperia XZ3 (akatsuki) : écran (simple-framebuffer) + charge.
+ *
+ * Fragment appliqué par scripts/build-dtb.sh sur le DTB décompilé du noyau
+ * pmOS (linux-postmarketos-qcom-sdm845). Ce DTB ne contient pas de labels
+ * (__symbols__) : on désigne donc les nœuds par leur chemin complet avec la
+ * syntaxe &{/chemin}, et dtc crée lui-même les phandles nécessaires.
+ *
+ * NE JAMAIS toucher ici aux nœuds UFS (ufshc@1d84000, phy@1d87000) :
+ * sur Tama, le pilote UFS mainline efface le bootloader (brick définitif).
+ */
+
+/ {
+	chosen {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		/*
+		 * Réutilise l'image laissée par le bootloader dans cont_splash_mem.
+		 * Méthode : série « Add framebuffer on Xiaomi Poco F1 »
+		 * (D. Heidelberg, P. Hodina, mars 2026), même SoC, même zone mémoire.
+		 * Format et stride : hypothèse reprise du Poco F1, à confirmer sur le XZ3.
+		 */
+		framebuffer {
+			compatible = "simple-framebuffer";
+			memory-region = <&{/reserved-memory/memory@9d400000}>;
+			format = "a8r8g8b8";
+			stride = <(1440 * 4)>;
+			height = <2880>;
+			width = <1440>;
+
+			/* Alimentations à garder allumées pour l'écran et le DSI */
+			vddio-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo14}>; /* E/S panneau 1,8 V */
+			vci-supply = <&{/ts-vddio-regulator}>;                       /* DCDC de l'OLED */
+			vdda-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo26}>;  /* DSI 1,2 V */
+			vdds-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo1}>;   /* PHY DSI 0,9 V */
+		};
+	};
+
+	/* Batterie décrite par Petr Hodina (branche sony/akatsuki, 2023) */
+	akatsuki_battery: battery {
+		compatible = "simple-battery";
+		charge-full-design-microamp-hours = <3325000>;
+		voltage-min-design-microvolt = <3400000>;
+		voltage-max-design-microvolt = <4380000>;
+	};
+};
+
+/* Le pilote d'affichage ne doit pas reprendre la main sur l'écran */
+&{/soc@0/display-subsystem@ae00000} {	/* MDSS */
+	status = "disabled";
+};
+
+&{/soc@0/clock-controller@af00000} {	/* dispcc */
+	status = "disabled";
+};
+
+/* Chargeur PMI8998 (pilote qcom_smbx) */
+&{/soc@0/spmi@c440000/pmic@2/charger@1000} {
+	monitored-battery = <&akatsuki_battery>;
+	status = "okay";
+};

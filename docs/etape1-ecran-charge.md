@@ -1,6 +1,27 @@
 # Étape 1 — Écran (simple-framebuffer) et charge, sans recompiler le noyau
 
-Outil : `scripts/patch-dtb-akatsuki.py` (Python 3 seul, pas besoin de `dtc`).
+## Construire le DTB
+
+**Méthode principale — avec `dtc`** (paquet `dtc` sur Arch) :
+
+```sh
+scripts/build-dtb.sh \
+    x/boot/dtbs/qcom/sdm845-sony-xperia-tama-akatsuki.dtb \
+    akatsuki-fb-charge.dtb
+```
+
+Le script décompile le DTB du noyau pmOS, y ajoute le fragment source
+[`dts/akatsuki-ecran-charge.dtsi`](../dts/akatsuki-ecran-charge.dtsi), recompile,
+et affiche les différences. Il refuse d'écrire la sortie si l'UFS est actif (entrée
+ou sortie, y compris si un fragment tentait de le réactiver) ou si le DTB n'est pas
+celui du XZ3.
+
+On part du DTB **binaire** de pmOS plutôt que des sources du noyau : celles du noyau
+pmOS (arbre SDM845 sur Codeberg) ne sont pas forcément identiques au noyau officiel,
+et le DTB doit correspondre exactement au noyau qui démarre. Le DTB pmOS n'ayant pas
+de labels, le fragment désigne les nœuds par leur chemin (`&{/soc@0/...}`).
+
+**Méthode de secours — sans `dtc`** (Python 3 seul) :
 
 ```sh
 python3 scripts/patch-dtb-akatsuki.py \
@@ -8,8 +29,11 @@ python3 scripts/patch-dtb-akatsuki.py \
     akatsuki-fb-charge.dtb
 ```
 
-Le script refuse d'écrire la sortie si l'UFS est actif (en entrée ou en sortie),
-si le DTB n'est pas celui du XZ3, ou s'il a déjà été modifié.
+Mêmes garde-fous, plus le refus d'une double application.
+
+**Validation croisée** (DTB pmOS `7.1_rc1-r4`, dtc 1.7.2 compilé depuis le dépôt
+officiel) : les deux méthodes donnent un contenu **identique** une fois décompilé
+par `dtc`, sans nouvel avertissement de `dtc`.
 
 ## Ce qui change dans le DTB
 
