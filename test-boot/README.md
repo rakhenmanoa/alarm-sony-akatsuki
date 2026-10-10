@@ -53,6 +53,18 @@ Pour éteindre en cas de blocage : **Power + Volume haut** jusqu'à 3 vibrations
 
 ## Lire le journal du noyau depuis le PC
 
+**Par le réseau (le plus simple)** :
+
+```sh
+sudo ip addr add 172.16.42.2/24 dev <interface usb>   # voir « ip link », ex. enp0s20f0u1i2
+curl http://172.16.42.1/ > dmesg-xz3.txt              # ou ouvrir l'adresse dans un navigateur
+curl http://172.16.42.1/fastboot                      # renvoyer le téléphone en fastboot
+```
+
+(`/reboot` et `/poweroff` existent aussi.)
+
+**Par le port série** (ne répondait pas lors du premier essai réel) :
+
 Le téléphone fournit un port série USB :
 
 ```sh

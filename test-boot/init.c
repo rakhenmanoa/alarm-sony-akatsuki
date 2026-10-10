@@ -10,7 +10,9 @@
  *      u_ether, usb_f_ncm), copiés tels quels (.ko.zst) depuis le paquet pmOS ;
  *   3. présente le téléphone au PC comme port série (ACM → /dev/ttyACM0 sur le PC)
  *      + carte réseau (NCM, téléphone en 172.16.42.1) ;
- *   4. sur le port série : envoie les messages du noyau au fil de l'eau ;
+ *   4. sert le journal du noyau par le réseau : http://172.16.42.1/
+ *      (/fastboot, /reboot, /poweroff : commandes) ;
+ *   5. sur le port série : envoie les messages du noyau au fil de l'eau ;
  *      Entrée = renvoyer tout le journal depuis le début,
  *      « b » + Entrée = redémarrer en fastboot, « r » = redémarrer, « p » = éteindre.
  *
@@ -299,18 +301,23 @@ static void setup_net(void)
 	memcpy(r.name, "usb0", 5);
 	r.u.sin.family = 2;
 	r.u.sin.addr = 172 | 16 << 8 | 42 << 16 | 1u << 24; /* 172.16.42.1 */
-	if ((e = sc(SYS_ioctl, s, SIOCSIFADDR, &r)) < 0)
-		logr("SIOCSIFADDR usb0", e);
+	if ((e = sc(SYS_ioctl, s, SIOCSIFADDR, &r)) == -19 /* ENODEV */) {
+		/* pas de usb0 (test dans QEMU) : première carte Ethernet */
+		memcpy(r.name, "eth0", 5);
+		e = sc(SYS_ioctl, s, SIOCSIFADDR, &r);
+	}
+	if (e < 0)
+		logr("SIOCSIFADDR", e);
 	r.u.sin.addr = 255 | 255 << 8 | 255 << 16; /* 255.255.255.0 */
 	if ((e = sc(SYS_ioctl, s, SIOCSIFNETMASK, &r)) < 0)
-		logr("SIOCSIFNETMASK usb0", e);
+		logr("SIOCSIFNETMASK", e);
 	memset(&r.u, 0, sizeof r.u);
 	sc(SYS_ioctl, s, SIOCGIFFLAGS, &r);
 	r.u.flags |= 1; /* IFF_UP */
 	if ((e = sc(SYS_ioctl, s, SIOCSIFFLAGS, &r)) < 0)
-		logr("SIOCSIFFLAGS usb0", e);
+		logr("SIOCSIFFLAGS", e);
 	else
-		log("usb0 = 172.16.42.1/24");
+		log(r.name[0] == 'u' ? "usb0 = 172.16.42.1/24" : "eth0 = 172.16.42.1/24");
 	sc(SYS_close, s, 0, 0);
 }
 
@@ -328,11 +335,12 @@ static void do_reboot(long cmd, const char *arg)
 /* ------------------------------------------------ port série : journal */
 static long tty = -1;
 
-static void tty_write(const char *b, long n)
+/* Écriture complète sur fd (port série ou socket), abandon si le PC ne lit plus */
+static void out_write(long fd, const char *b, long n)
 {
 	int tries = 0;
-	while (n > 0 && tty >= 0) {
-		long r = sc(SYS_write, tty, b, n);
+	while (n > 0 && fd >= 0) {
+		long r = sc(SYS_write, fd, b, n);
 		if (r > 0) {
 			b += r;
 			n -= r;
@@ -340,13 +348,13 @@ static void tty_write(const char *b, long n)
 		} else if ((r == -EAGAIN || r == -EINTR) && tries++ < 200) {
 			sleep_ms(10);
 		} else {
-			return; /* PC déconnecté : on abandonne cette ligne */
+			return; /* PC déconnecté : on abandonne */
 		}
 	}
 }
 
 /* Un enregistrement /dev/kmsg « prio,seq,µs,drapeaux;message\n » → « [s.µs] message\n » */
-static void forward_record(const char *rec, long n)
+static void forward_record(long fd, const char *rec, long n)
 {
 	char out[1200], *p = out;
 	long i = 0, field = 0, us = 0;
@@ -375,10 +383,11 @@ static void forward_record(const char *rec, long n)
 	while (i < n && rec[i] != '\n' && p < out + sizeof out - 2)
 		*p++ = rec[i++];
 	*p++ = '\n';
-	tty_write(out, p - out);
+	out_write(fd, out, p - out);
 }
 
-static void dump_all(void)
+/* Tout le journal du noyau depuis le début */
+static void dump_all(long out)
 {
 	char rec[1100];
 	long fd = xopen("/dev/kmsg", O_RDONLY | O_NONBLOCK), n;
@@ -390,7 +399,7 @@ static void dump_all(void)
 			continue;
 		if (n <= 0)
 			break;
-		forward_record(rec, n);
+		forward_record(out, rec, n);
 	}
 	sc(SYS_close, fd, 0, 0);
 }
@@ -404,39 +413,140 @@ struct pollfd {
 	short events, revents;
 };
 
-static void serial_loop(void)
+/* ------------------------------------------- serveur web : journal par le réseau */
+#define SYS_bind 200
+#define SYS_listen 201
+#define SYS_shutdown 210
+#define SYS_setsockopt 208
+#define SYS_accept4 242
+
+static long http_listen(void)
+{
+	struct {
+		u16 family, port;
+		u32 addr;
+		u8 zero[8];
+	} a;
+	int one = 1;
+	long s = sc(SYS_socket, 2 /* AF_INET */, 1 /* SOCK_STREAM */ | O_CLOEXEC, 0), r;
+
+	if (s < 0) {
+		logr("socket TCP", s);
+		return -1;
+	}
+	sc6(SYS_setsockopt, s, 1 /* SOL_SOCKET */, 2 /* SO_REUSEADDR */, (long)&one, 4, 0);
+	memset(&a, 0, sizeof a);
+	a.family = 2;
+	a.port = (u16)(80 << 8 | 80 >> 8); /* port 80, ordre réseau */
+	if ((r = sc(SYS_bind, s, &a, sizeof a)) < 0 || (r = sc(SYS_listen, s, 4, 0)) < 0) {
+		logr("serveur web port 80", r);
+		sc(SYS_close, s, 0, 0);
+		return -1;
+	}
+	log("serveur web prêt : http://172.16.42.1/");
+	return s;
+}
+
+static int starts(const char *s, const char *pfx)
+{
+	while (*pfx)
+		if (*s++ != *pfx++)
+			return 0;
+	return 1;
+}
+
+static const char page_cmds[] =
+	"\n--- Commandes : http://172.16.42.1/fastboot (retour en fastboot), "
+	"/reboot, /poweroff ---\n";
+
+/* GET / : journal complet. GET /fastboot, /reboot, /poweroff : commandes. */
+static void http_client(long c)
+{
+	static const char hdr[] = "HTTP/1.0 200 OK\r\n"
+				  "Content-Type: text/plain; charset=utf-8\r\n"
+				  "Connection: close\r\n\r\n";
+	char req[512];
+	struct pollfd p = { (int)c, 1, 0 };
+	long ts[2] = { 2, 0 }, n = 0;
+
+	/* curl et navigateur envoient une requête ; « nc » n'envoie rien : 2 s max */
+	if (sc6(SYS_ppoll, (long)&p, 1, (long)ts, 0, 8, 0) > 0)
+		n = sc(SYS_read, c, req, sizeof req - 1);
+	req[n > 0 ? n : 0] = 0;
+
+	out_write(c, hdr, sizeof hdr - 1);
+	if (starts(req, "GET /fastboot")) {
+		out_write(c, "retour en fastboot\n", 19);
+		sc(SYS_shutdown, c, 1, 0);
+		sc(SYS_close, c, 0, 0);
+		do_reboot(RB_RESTART2, "bootloader");
+	} else if (starts(req, "GET /reboot")) {
+		out_write(c, "redemarrage\n", 12);
+		sc(SYS_shutdown, c, 1, 0);
+		sc(SYS_close, c, 0, 0);
+		do_reboot(RB_RESTART, 0);
+	} else if (starts(req, "GET /poweroff")) {
+		out_write(c, "extinction\n", 11);
+		sc(SYS_shutdown, c, 1, 0);
+		sc(SYS_close, c, 0, 0);
+		do_reboot(RB_POWER_OFF, 0);
+	} else {
+		dump_all(c);
+		out_write(c, page_cmds, sizeof page_cmds - 1);
+	}
+	sc(SYS_shutdown, c, 1 /* SHUT_WR */, 0);
+	sc(SYS_close, c, 0, 0);
+}
+
+/* ------------------------------------------ boucle : port série + serveur web */
+static void main_loop(void)
 {
 	char rec[1100], in[64];
 	long follow = xopen("/dev/kmsg", O_RDONLY | O_NONBLOCK), n, i;
+	long web = http_listen();
+	long last_tty_err = 0;
 
 	if (follow >= 0)
 		sc(SYS_lseek, follow, 0, 2 /* SEEK_END : seulement les nouveaux */);
 
 	for (;;) {
-		struct pollfd p[2];
+		struct pollfd p[3];
+		long ts[2] = { 1, 0 };
 		if (tty < 0) {
 			tty = xopen("/dev/ttyGS0", O_RDWR | O_NOCTTY | O_NONBLOCK);
-			if (tty < 0) {
-				sleep_ms(1000);
-				continue;
+			if (tty < 0 && tty != last_tty_err) {
+				logr("ouverture /dev/ttyGS0", tty);
+				last_tty_err = tty;
+			} else if (tty >= 0) {
+				log("/dev/ttyGS0 ouvert");
+				last_tty_err = 0;
 			}
 		}
-		p[0].fd = (int)tty;
+		p[0].fd = (int)tty; /* -1 : ignoré par ppoll */
 		p[0].events = 1; /* POLLIN */
 		p[0].revents = 0;
 		p[1].fd = (int)follow;
 		p[1].events = 1;
 		p[1].revents = 0;
-		if (sc6(SYS_ppoll, (long)p, 2, 0, 0, 8, 0) < 0) {
+		p[2].fd = (int)web;
+		p[2].events = 1;
+		p[2].revents = 0;
+		/* délai de 1 s : rouvrir le port série s'il a été fermé */
+		if (sc6(SYS_ppoll, (long)p, 3, (long)ts, 0, 8, 0) < 0) {
 			sleep_ms(100);
 			continue;
 		}
+		if (p[2].revents & 1) {
+			long c = sc6(SYS_accept4, web, 0, 0, O_CLOEXEC, 0, 0);
+			if (c >= 0)
+				http_client(c);
+		}
 		if (p[1].revents & 1) {
 			n = sc(SYS_read, follow, rec, sizeof rec);
-			if (n > 0)
-				forward_record(rec, n);
+			if (n > 0 && tty >= 0)
+				forward_record(tty, rec, n);
 		}
-		if (p[0].revents & 1) {
+		if (tty >= 0 && (p[0].revents & 1)) {
 			n = sc(SYS_read, tty, in, sizeof in);
 			for (i = 0; i < n; i++) {
 				if (in[i] == 'b')
@@ -447,20 +557,36 @@ static void serial_loop(void)
 					do_reboot(RB_POWER_OFF, 0);
 			}
 			if (n > 0) {
-				tty_write(help, sizeof help - 1);
-				dump_all();
+				out_write(tty, help, sizeof help - 1);
+				dump_all(tty);
 			} else if (n == 0) {
 				sc(SYS_close, tty, 0, 0); /* PC parti : rouvrir */
 				tty = -1;
-				sleep_ms(500);
 			}
 		}
-		if (p[0].revents & (8 | 16) /* POLLERR | POLLHUP */) {
+		if (tty >= 0 && (p[0].revents & (8 | 16) /* POLLERR | POLLHUP */)) {
 			sc(SYS_close, tty, 0, 0);
 			tty = -1;
-			sleep_ms(500);
 		}
 	}
+}
+
+/* Mot présent dans /proc/cmdline ? (« akatsuki-test.qemu » : test dans l'émulateur) */
+static int cmdline_has(const char *word)
+{
+	char b[2048];
+	long fd = xopen("/proc/cmdline", O_RDONLY), n, i, k;
+	if (fd < 0)
+		return 0;
+	n = sc(SYS_read, fd, b, sizeof b - 1);
+	sc(SYS_close, fd, 0, 0);
+	for (i = 0; i < n; i++) {
+		for (k = 0; word[k] && i + k < n && b[i + k] == word[k]; k++)
+			;
+		if (!word[k])
+			return 1;
+	}
+	return 0;
 }
 
 /* ------------------------------------------------------------------ main */
@@ -486,7 +612,9 @@ static void run(void)
 	for (i = 0; i < sizeof modules / sizeof modules[0]; i++)
 		load_module(modules[i]);
 
-	if (setup_gadget() < 0) {
+	if (cmdline_has("akatsuki-test.qemu")) {
+		log("mode émulateur : pas de gadget USB");
+	} else if (setup_gadget() < 0) {
 		/* Retour direct en fastboot : preuve visible (LED bleue) que init a
 		 * tourné, sans repasser par le démarrage d'Android ni par la logique
 		 * des slots A/B du bootloader. */
@@ -497,8 +625,8 @@ static void run(void)
 	}
 	sleep_ms(500);
 	setup_net();
-	log("USB prêt : sur le PC, « cat /dev/ttyACM0 » ou ping 172.16.42.1");
-	serial_loop();
+	log("USB prêt : http://172.16.42.1/ (journal), « cat /dev/ttyACM0 », ping 172.16.42.1");
+	main_loop();
 }
 
 __attribute__((noreturn)) void cmain(void)
