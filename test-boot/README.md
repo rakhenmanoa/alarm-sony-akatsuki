@@ -17,6 +17,8 @@ de l'étape 1 (écran en simple-framebuffer) ; l'UFS est vérifié désactivé.
 
 ## Lancer
 
+Noter d'abord le slot de LineageOS : `fastboot getvar current-slot`.
+
 Téléphone éteint, **Volume haut + câble USB** (LED bleue), puis :
 
 ```sh
@@ -29,7 +31,8 @@ fastboot boot boot-test-noyau.img
 |---|---|
 | Messages du noyau à l'écran, puis `akatsuki-test: init lancé : le noyau a démarré !` | ✅ Noyau, DTB et écran OK |
 | Un nouveau périphérique USB `18d1:d001` « Xperia XZ3 test noyau » (`lsusb`, `dmesg -w` sur le PC) | ✅ Noyau + USB OK |
-| Écran noir, mais le téléphone **redémarre tout seul** après ~1 min 15 s | 🟡 Le noyau a démarré et lancé init, mais l'USB n'a pas pu être activé |
+| Écran noir, mais le téléphone **revient tout seul en fastboot** (LED bleue) après ~40 s | 🟡 Le noyau a démarré et lancé init, mais l'USB n'a pas pu être activé |
+| Le téléphone redémarre sur le **recovery** ou change de slot | ❌ Le noyau a planté (redémarrage par le chien de garde) : le bootloader a compté un échec de démarrage. Revenir avec `fastboot --set-active=<slot de LineageOS>` |
 | Écran noir, rien sur l'USB, pas de redémarrage (attendre 3 min) | ❌ Le noyau ne démarre pas (ou plante avant init) |
 
 Pour éteindre en cas de blocage : **Power + Volume haut** jusqu'à 3 vibrations.
@@ -61,5 +64,5 @@ ping 172.16.42.1
 Le même noyau et le même initramfs (extrait du `boot.img`) ont été démarrés dans
 QEMU (machine `virt` ARM64) : init lancé, les 5 modules (zstd, signés) chargés,
 configuration USB créée sans erreur ; faute de contrôleur USB dans la machine
-virtuelle, redémarrage automatique au bout de 79 s, comme prévu. Ce qui reste
+virtuelle, retour demandé en mode fastboot (`reboot: Restarting system with command 'bootloader'`) au bout de 44 s, comme prévu. Ce qui reste
 propre au téléphone : DTB, écran, contrôleur USB dwc3.

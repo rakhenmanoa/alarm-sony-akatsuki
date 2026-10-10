@@ -14,9 +14,10 @@
  *      Entrée = renvoyer tout le journal depuis le début,
  *      « b » + Entrée = redémarrer en fastboot, « r » = redémarrer, « p » = éteindre.
  *
- * Si le gadget USB ne peut pas être créé, l'init redémarre le téléphone au bout
- * de 15 s : un redémarrage seul signifie donc « le noyau a démarré et lancé init,
- * mais l'USB ne fonctionne pas ». Aucun accès à l'UFS ni à la carte SD.
+ * Si le gadget USB ne peut pas être créé, l'init renvoie le téléphone en mode
+ * fastboot (LED bleue) environ 40 s après le démarrage : un retour seul en
+ * fastboot signifie donc « le noyau a démarré et lancé init, mais l'USB ne
+ * fonctionne pas ». Aucun accès à l'UFS ni à la carte SD.
  */
 
 typedef unsigned long u64;
@@ -251,13 +252,13 @@ static int setup_gadget(void)
 	sc(SYS_symlinkat, G "/functions/acm.GS0", AT_FDCWD, G "/configs/c.1/acm.GS0");
 	sc(SYS_symlinkat, G "/functions/ncm.usb0", AT_FDCWD, G "/configs/c.1/ncm.usb0");
 
-	/* Le contrôleur dwc3 peut apparaître tard (sondage différé) : attendre 60 s */
-	for (i = 0; i < 120; i++) {
+	/* Le contrôleur dwc3 peut apparaître tard (sondage différé) : attendre 30 s */
+	for (i = 0; i < 60; i++) {
 		if (first_udc(udc, sizeof udc))
 			break;
 		sleep_ms(500);
 	}
-	if (i == 120) {
+	if (i == 60) {
 		log("ERREUR : aucun contrôleur USB device dans /sys/class/udc");
 		return -1;
 	}
@@ -486,9 +487,13 @@ static void run(void)
 		load_module(modules[i]);
 
 	if (setup_gadget() < 0) {
-		log("gadget USB impossible : redémarrage dans 15 s");
-		sleep_ms(15000);
-		do_reboot(RB_RESTART, 0);
+		/* Retour direct en fastboot : preuve visible (LED bleue) que init a
+		 * tourné, sans repasser par le démarrage d'Android ni par la logique
+		 * des slots A/B du bootloader. */
+		log("gadget USB impossible : retour en fastboot dans 10 s");
+		sleep_ms(10000);
+		do_reboot(RB_RESTART2, "bootloader");
+		do_reboot(RB_RESTART, 0); /* si le mode « bootloader » est refusé */
 	}
 	sleep_ms(500);
 	setup_net();
