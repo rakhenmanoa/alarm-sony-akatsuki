@@ -51,9 +51,13 @@ Le correctif Sony existe dans le noyau d'origine (commit `cfd1489` du noyau Sail
 | `scripts/patch-dtb-akatsuki.py` | Secours sans `dtc` : même résultat que `build-dtb.sh` (vérifié identique), en Python seul |
 | `scripts/check-dtb-ufs.sh` | Garde-fou : refuse tout DTB où l'UFS est actif |
 | `scripts/make-bootimg.sh` | Assemble un `boot.img` (noyau + DTB + initramfs) avec les bons offsets |
+| `scripts/make-first-bootimg.sh` | `boot.img` du premier démarrage : initramfs vide, système monté directement depuis la carte SD |
+| `scripts/prepare-sdcard.sh` | Prépare la carte micro-SD : Arch Linux ARM + modules pmOS + réseau USB (nombreux garde-fous) |
+| `rootfs/` | Configuration copiée sur la carte : gadget USB NCM, `systemd-networkd` (172.16.42.1), `fstab`, nom d'hôte |
 | `docs/etat-des-lieux.md` | Ce qui fonctionne déjà, ce qui manque, sources |
 | `docs/noyau-pmos-7.1.md` | Analyse du noyau pmOS 7.1 et de son DTB (décompilé dans `docs/dts/`) |
 | `docs/patches-petr-hodina.md` | Inventaire des patches de Petr Hodina (fusionnés, en attente, à récupérer) |
+| `docs/premier-demarrage.md` | **Premier démarrage pas à pas** : carte SD, DTB, `fastboot boot`, SSH par USB |
 | `docs/etape1-ecran-charge.md` | Étape 1 : écran + charge, procédure de test et ce qu'il faut observer |
 | `patches/reference-hodina-2023/` | Patches de 2023 récupérés, conservés tels quels avec leur analyse |
 
@@ -86,6 +90,11 @@ telnet 172.16.42.1                     # shell de débogage par USB
 ```
 
 ## Piste 2 — Arch Linux ARM
+
+**Le plus simple pour commencer : [docs/premier-demarrage.md](docs/premier-demarrage.md)**
+(carte SD préparée par script, sans initramfs ni paquet à construire).
+
+Installation par paquet (à terme) :
 
 Même noyau que postmarketOS (`linux-postmarketos-qcom-sdm845`, 7.1), reconditionné
 en paquet Arch, avec un rootfs Arch Linux ARM aarch64 sur la carte SD.

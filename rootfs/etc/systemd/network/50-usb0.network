@@ -1,0 +1,15 @@
+# Interface réseau USB du téléphone (fonction NCM créée par akatsuki-usb-gadget).
+# Le téléphone est en 172.16.42.1 et donne une adresse au PC par DHCP.
+[Match]
+Name=usb0
+
+[Network]
+Address=172.16.42.1/24
+DHCPServer=yes
+ConfigureWithoutCarrier=yes
+
+[DHCPServer]
+PoolOffset=2
+PoolSize=10
+EmitDNS=no
+EmitRouter=no

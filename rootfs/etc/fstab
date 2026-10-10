@@ -1,0 +1,3 @@
+# Système sur la carte micro-SD (seul périphérique MMC : l'UFS est désactivé).
+# <périphérique>   <point>  <type>  <options>          <dump> <fsck>
+/dev/mmcblk0p1     /        ext4    rw,relatime        0      1

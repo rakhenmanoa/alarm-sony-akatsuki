@@ -1,0 +1,14 @@
+[Unit]
+Description=Réseau par USB (NCM) du Xperia XZ3
+After=systemd-modules-load.service local-fs.target
+Before=network-pre.target systemd-networkd.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/akatsuki-usb-gadget start
+ExecStop=/usr/local/bin/akatsuki-usb-gadget stop
+
+[Install]
+WantedBy=multi-user.target

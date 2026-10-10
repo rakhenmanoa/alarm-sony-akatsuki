@@ -1,0 +1,60 @@
+#!/bin/sh
+# akatsuki-usb-gadget — Réseau par USB (NCM) pour accéder au Xperia XZ3 depuis un PC.
+#
+# Le téléphone prend l'adresse 172.16.42.1 (comme postmarketOS) ; systemd-networkd
+# distribue une adresse au PC (voir /etc/systemd/network/50-usb0.network).
+# Depuis le PC :  ssh alarm@172.16.42.1
+#
+# Les fonctions USB (libcomposite, usb_f_ncm) sont des modules dans le noyau pmOS ;
+# le contrôleur USB (dwc3) et configfs sont intégrés.
+
+set -eu
+
+G=/sys/kernel/config/usb_gadget/akatsuki
+
+case "${1:-start}" in
+start)
+	# Le paquet pmOS livre un modules.alias vide : sans index, pas de chargement
+	# automatique des pilotes matériels (chargeur, Wi-Fi…). On le régénère une fois.
+	[ -s "/usr/lib/modules/$(uname -r)/modules.alias" ] || depmod -a || true
+	modprobe libcomposite
+	modprobe usb_f_ncm
+	mountpoint -q /sys/kernel/config || mount -t configfs none /sys/kernel/config
+
+	[ -d "$G" ] && exit 0
+	mkdir -p "$G"
+	cd "$G"
+
+	# Identifiants USB déjà utilisés par Mobile NixOS pour les SDM845
+	echo 0x18d1 > idVendor
+	echo 0xd001 > idProduct
+
+	mkdir -p strings/0x409
+	echo "akatsuki"            > strings/0x409/serialnumber
+	echo "Sony"                > strings/0x409/manufacturer
+	echo "Xperia XZ3 (Arch Linux ARM)" > strings/0x409/product
+
+	mkdir -p configs/c.1/strings/0x409
+	echo "NCM" > configs/c.1/strings/0x409/configuration
+
+	mkdir -p functions/ncm.usb0
+	ln -s functions/ncm.usb0 configs/c.1/
+
+	# Premier contrôleur USB device disponible (a600000.usb sur SDM845)
+	udc="$(ls /sys/class/udc | head -n1)"
+	[ -n "$udc" ] || { echo "akatsuki-usb-gadget : aucun contrôleur USB device" >&2; exit 1; }
+	echo "$udc" > UDC
+	;;
+stop)
+	[ -d "$G" ] || exit 0
+	cd "$G"
+	echo "" > UDC || true
+	rm -f configs/c.1/ncm.usb0
+	rmdir configs/c.1/strings/0x409 configs/c.1 functions/ncm.usb0 strings/0x409 2>/dev/null || true
+	cd / && rmdir "$G" 2>/dev/null || true
+	;;
+*)
+	echo "Usage : $0 [start|stop]" >&2
+	exit 2
+	;;
+esac
