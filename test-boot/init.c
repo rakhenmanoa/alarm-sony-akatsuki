@@ -693,6 +693,113 @@ static int cmdline_has(const char *word)
 	return 0;
 }
 
+/* ------------------------------------------------ démarrage d'Arch sur la carte SD */
+#define SYS_umount2 39
+#define SYS_chdir 49
+#define SYS_chroot 51
+#define SYS_newfstatat 79
+#define SYS_execve 221
+#define MS_MOVE 8192
+
+/* Valeur d'un paramètre « clé=valeur » de /proc/cmdline (le dernier gagne) */
+static int cmdline_get(const char *key, char *out, int max)
+{
+	char b[2048];
+	long fd = xopen("/proc/cmdline", O_RDONLY), n, i, k, found = 0;
+	if (fd < 0)
+		return 0;
+	n = sc(SYS_read, fd, b, sizeof b - 1);
+	sc(SYS_close, fd, 0, 0);
+	if (n <= 0)
+		return 0;
+	b[n] = 0;
+	for (i = 0; i < n; i++) {
+		if (i > 0 && b[i - 1] != ' ')
+			continue;
+		for (k = 0; key[k] && b[i + k] == key[k]; k++)
+			;
+		if (key[k] || b[i + k] != '=')
+			continue;
+		i += k + 1;
+		for (k = 0; i < n && b[i] != ' ' && b[i] != '\n' && k < max - 1; k++, i++)
+			out[k] = b[i];
+		out[k] = 0;
+		found = 1;
+	}
+	return (int)found;
+}
+
+static int exists(const char *path)
+{
+	char st[128];
+	return sc6(SYS_newfstatat, AT_FDCWD, (long)path, (long)st, 0x100 /* NOFOLLOW */, 0, 0) == 0;
+}
+
+/*
+ * Monte la carte SD et bascule dessus (comme switch_root), puis lance systemd.
+ * Ne revient qu'en cas d'échec : on passe alors en mode secours (USB + web).
+ *
+ * On n'utilise pas root= : le bootloader Sony ajoute « root=/dev/dm-0 » après
+ * notre ligne de commande. On lit « akatsuki.root= » (par défaut /dev/mmcblk0p1,
+ * seul périphérique MMC puisque l'UFS est désactivé).
+ */
+static void boot_sd(void)
+{
+	static char dev[64] = "/dev/mmcblk0p1";
+	static char *const argv[] = { "/sbin/init", 0 };
+	static char *const envp[] = { "HOME=/", "TERM=linux", 0 };
+	long r = -1;
+	int i;
+
+	cmdline_get("akatsuki.root", dev, sizeof dev);
+	log(dev);
+	/* la carte apparaît vers 0,6 s ; on laisse jusqu'à 15 s */
+	for (i = 0; i < 30 && !exists(dev); i++)
+		sleep_ms(500);
+	if (!exists(dev)) {
+		log("carte SD introuvable : mode secours");
+		return;
+	}
+	xmkdir("/newroot");
+	r = sc6(SYS_mount, (long)dev, (long)"/newroot", (long)"ext4", 0, 0, 0);
+	if (r < 0) {
+		logr("montage ext4 de la carte SD impossible : mode secours", r);
+		return;
+	}
+	if (exists("/newroot/etc/akatsuki-secours")) {
+		log("/etc/akatsuki-secours présent sur la carte : mode secours demandé");
+		sc(SYS_umount2, "/newroot", 0, 0);
+		return;
+	}
+	if (!exists("/newroot/usr/lib/systemd/systemd")) {
+		log("pas de systemd sur la carte (/usr/lib/systemd/systemd) : mode secours");
+		sc(SYS_umount2, "/newroot", 0, 0);
+		return;
+	}
+	log("carte SD montée, bascule vers Arch Linux ARM (systemd)");
+
+	/* /dev, /proc, /sys suivent dans le nouveau système (ils y existent déjà) */
+	sc6(SYS_mount, (long)"/dev", (long)"/newroot/dev", 0, MS_MOVE, 0, 0);
+	sc6(SYS_mount, (long)"/proc", (long)"/newroot/proc", 0, MS_MOVE, 0, 0);
+	sc6(SYS_mount, (long)"/sys", (long)"/newroot/sys", 0, MS_MOVE, 0, 0);
+
+	sc(SYS_chdir, "/newroot", 0, 0);
+	if ((r = sc6(SYS_mount, (long)".", (long)"/", 0, MS_MOVE, 0, 0)) < 0 ||
+	    (r = sc(SYS_chroot, ".", 0, 0)) < 0) {
+		logr("bascule impossible", r);
+		do_reboot(RB_RESTART, 0);
+	}
+	sc(SYS_chdir, "/", 0, 0);
+	if (kmsg >= 0)
+		sc(SYS_close, kmsg, 0, 0);
+	r = sc(SYS_execve, "/usr/lib/systemd/systemd", argv, envp);
+	/* execve n'est pas revenu sinon : on ne peut plus revenir à l'initramfs */
+	kmsg = xopen("/dev/kmsg", O_WRONLY);
+	logr("lancement de systemd impossible", r);
+	for (;;)
+		sleep_ms(1000000);
+}
+
 /* ------------------------------------------------------------------ main */
 static const char *const modules[] = {
 	"/lib/modules/libcomposite.ko.zst", "/lib/modules/u_serial.ko.zst",
@@ -711,6 +818,11 @@ static void run(void)
 	log("============================================");
 	log("init lancé : le noyau a démarré !");
 	log("============================================");
+
+	if (!cmdline_has("akatsuki.secours"))
+		boot_sd(); /* ne revient qu'en cas d'échec */
+
+	log("mode secours : USB + serveur web");
 	xmount("configfs", "/sys/kernel/config", "configfs");
 	xmount("pstore", "/sys/fs/pstore", "pstore");
 
@@ -720,13 +832,10 @@ static void run(void)
 	if (cmdline_has("akatsuki-test.qemu")) {
 		log("mode émulateur : pas de gadget USB");
 	} else if (setup_gadget() < 0) {
-		/* Retour direct en fastboot : preuve visible (LED bleue) que init a
-		 * tourné, sans repasser par le démarrage d'Android ni par la logique
-		 * des slots A/B du bootloader. */
-		log("gadget USB impossible : retour en fastboot dans 10 s");
-		sleep_ms(10000);
-		do_reboot(RB_RESTART2, "bootloader");
-		do_reboot(RB_RESTART, 0); /* si le mode « bootloader » est refusé */
+		/* Le retour en fastboot par logiciel ne marche pas avec X-Boot (essais
+		 * du 10/10/2026) : redémarrer ferait boucler sur ce noyau. On reste
+		 * allumé ; extinction forcée Power + Volume haut. */
+		log("gadget USB impossible : on reste allumé (Power + Volume haut pour éteindre)");
 	}
 	sleep_ms(500);
 	setup_net();

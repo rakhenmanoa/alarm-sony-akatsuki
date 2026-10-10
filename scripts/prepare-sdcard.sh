@@ -126,12 +126,13 @@ chmod 755 "$mnt/usr/local/bin/akatsuki-usb-gadget"
 wants="$mnt/etc/systemd/system/multi-user.target.wants"
 mkdir -p "$wants"
 ln -sf /etc/systemd/system/akatsuki-usb-gadget.service "$wants/akatsuki-usb-gadget.service"
+ln -sf /etc/systemd/system/akatsuki-usb-watch.service "$wants/akatsuki-usb-watch.service"
 for svc in sshd systemd-networkd; do
 	[ -e "$mnt/usr/lib/systemd/system/$svc.service" ] && ln -sf "/usr/lib/systemd/system/$svc.service" "$wants/$svc.service"
 done
 
 sync
 echo
-echo "Carte prête. Noyau $kver, système monté par le noyau sur /dev/mmcblk0p1."
+echo "Carte prête. Noyau $kver. L'initramfs de test-boot/ monte /dev/mmcblk0p1 et lance systemd."
 echo "Fichiers de démarrage copiés dans /boot/akatsuki/ sur la carte."
 echo "Identifiants par défaut : alarm/alarm et root/root (à changer dès le premier accès)."

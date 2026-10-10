@@ -1,0 +1,12 @@
+[Unit]
+Description=Surveillance de la connexion USB du Xperia XZ3 (reconnexion si besoin)
+After=akatsuki-usb-gadget.service
+Requires=akatsuki-usb-gadget.service
+
+[Service]
+ExecStart=/usr/local/bin/akatsuki-usb-gadget watch
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

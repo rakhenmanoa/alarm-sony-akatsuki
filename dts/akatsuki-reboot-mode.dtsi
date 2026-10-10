@@ -12,6 +12,10 @@
  * Pilote syscon-reboot-mode (intégré au noyau pmOS 7.1). Écrire dans l'IMEM
  * est sans risque : c'est une petite mémoire vive interne, effacée à
  * l'extinction ; aucun stockage n'est touché.
+ *
+ * Essai du 10/10/2026 (test-boot v4) : `reboot bootloader` ne mène toujours pas
+ * en fastboot. Le mécanisme de X-Boot reste à trouver ; fragment conservé car
+ * inoffensif.
  */
 
 &{/soc@0/sram@14680000} {

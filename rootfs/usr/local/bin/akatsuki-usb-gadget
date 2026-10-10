@@ -45,6 +45,28 @@ start)
 	[ -n "$udc" ] || { echo "akatsuki-usb-gadget : aucun contrôleur USB device" >&2; exit 1; }
 	echo "$udc" > UDC
 	;;
+watch)
+	# Le PC rate parfois l'énumération (error -71) : si le gadget n'est pas
+	# « configured » pendant 15 s, on le déconnecte puis le reconnecte.
+	n=0
+	while sleep 5; do
+		[ -f "$G/UDC" ] || continue
+		udc="$(cat "$G/UDC")"
+		[ -n "$udc" ] || continue
+		if [ "$(cat "/sys/class/udc/$udc/state" 2>/dev/null)" = configured ]; then
+			n=0
+		else
+			n=$((n + 1))
+		fi
+		if [ "$n" -ge 3 ]; then
+			echo "akatsuki-usb-gadget : USB non configuré, reconnexion"
+			echo "" > "$G/UDC" || true
+			sleep 1
+			echo "$udc" > "$G/UDC" || true
+			n=0
+		fi
+	done
+	;;
 stop)
 	[ -d "$G" ] || exit 0
 	cd "$G"
@@ -54,7 +76,7 @@ stop)
 	cd / && rmdir "$G" 2>/dev/null || true
 	;;
 *)
-	echo "Usage : $0 [start|stop]" >&2
+	echo "Usage : $0 [start|watch|stop]" >&2
 	exit 2
 	;;
 esac

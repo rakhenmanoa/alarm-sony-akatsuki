@@ -46,20 +46,20 @@ Le correctif Sony existe dans le noyau d'origine (commit `cfd1489` du noyau Sail
 | `pmos/firmware-sony-akatsuki/` | Paquet des firmwares, depuis le dépôt de Petr Hodina — brouillon |
 | `arch/linux-sony-akatsuki-pmos/` | PKGBUILD Arch : noyau 7.1 de postmarketOS reconditionné (refuse de se construire si l'UFS est actif) |
 | `scripts/fetch-pmos-kernel.sh` | Trouve et télécharge la version actuelle du noyau pmOS, met à jour le PKGBUILD |
+| `dts/akatsuki-reboot-mode.dtsi` | Raison de redémarrage au format Sony (IMEM) — sans effet constaté pour l'instant |
 | `dts/akatsuki-ecran-charge.dtsi` | Étape 1 (source) : écran (simple-framebuffer) et charge, fragment à appliquer au DTB pmOS |
 | `scripts/build-dtb.sh` | Construit le DTB modifié avec `dtc` (base pmOS + fragments de `dts/`), garde-fou UFS entrée et sortie |
 | `scripts/patch-dtb-akatsuki.py` | Secours sans `dtc` : même résultat que `build-dtb.sh` (vérifié identique), en Python seul |
 | `scripts/check-dtb-ufs.sh` | Garde-fou : refuse tout DTB où l'UFS est actif |
 | `scripts/make-bootimg.sh` | Assemble un `boot.img` (noyau + DTB + initramfs) avec les bons offsets |
-| `scripts/make-first-bootimg.sh` | `boot.img` du premier démarrage : initramfs vide, système monté directement depuis la carte SD |
 | `scripts/prepare-sdcard.sh` | Prépare la carte micro-SD : Arch Linux ARM + modules pmOS + réseau USB (nombreux garde-fous) |
-| `rootfs/` | Configuration copiée sur la carte : gadget USB NCM, `systemd-networkd` (172.16.42.1), `fstab`, nom d'hôte |
+| `rootfs/` | Configuration copiée sur la carte : gadget USB NCM et surveillance de la connexion, `systemd-networkd` (172.16.42.1), `fstab`, nom d'hôte |
 | `docs/etat-des-lieux.md` | Ce qui fonctionne déjà, ce qui manque, sources |
 | `docs/noyau-pmos-7.1.md` | Analyse du noyau pmOS 7.1 et de son DTB (décompilé dans `docs/dts/`) |
 | `docs/patches-petr-hodina.md` | Inventaire des patches de Petr Hodina (fusionnés, en attente, à récupérer) |
-| `test-boot/` | **Test le plus simple** : le noyau démarre-t-il ? (initramfs de 115 Ko, journal du noyau par USB, sans carte SD) |
+| `test-boot/` | **boot.img** : noyau pmOS + DTB + initramfs maison (monte la carte SD et lance Arch ; sinon mode secours USB + journal sur http://172.16.42.1/) |
 | `docs/premier-demarrage-resultats.md` | **Résultats du premier démarrage réel** : ce qui marche, ce qui manque, pièges du bootloader |
-| `docs/premier-demarrage.md` | **Premier démarrage pas à pas** : carte SD, DTB, `fastboot boot`, SSH par USB |
+| `docs/premier-demarrage.md` | **Installer Arch sur la carte SD pas à pas** : carte SD, boot.img, slot B, SSH par USB |
 | `docs/etape1-ecran-charge.md` | Étape 1 : écran + charge, procédure de test et ce qu'il faut observer |
 | `patches/reference-hodina-2023/` | Patches de 2023 récupérés, conservés tels quels avec leur analyse |
 

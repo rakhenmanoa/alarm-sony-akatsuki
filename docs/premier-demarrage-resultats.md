@@ -60,7 +60,7 @@ root=/dev/dm-0 … skip_initramfs rootwait ro init=/init
 
 Pour le noyau, le dernier `root=` gagne : un `root=/dev/mmcblk0p1` passé dans le
 `boot.img` serait **écrasé** par `root=/dev/dm-0`. Démarrer Arch directement par
-`root=` (sans initramfs, comme le prévoyait `scripts/make-first-bootimg.sh`) ne
+`root=` (sans initramfs, comme le prévoyait l'ancien `scripts/make-first-bootimg.sh`, supprimé depuis) ne
 marchera donc pas. Il faut un **initramfs** qui monte lui-même la carte SD
 (`/dev/mmcblk0p1`) puis bascule dessus (`switch_root`) — c'est ce que font
 postmarketOS et Mobile NixOS.
