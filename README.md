@@ -1,8 +1,11 @@
-# Linux mainline sur Sony Xperia XZ3 (akatsuki)
+# alarm-sony-akatsuki
 
-Faire tourner une distribution Linux classique — **postmarketOS** ou **Arch Linux ARM** —
-sur le Sony Xperia XZ3 (H8416 / H9436 / H9493, nom de code *akatsuki*, SoC Snapdragon 845),
-avec un noyau mainline.
+**Arch Linux ARM** sur le Sony Xperia XZ3 (H8416 / H9436 / H9493, nom de code *akatsuki*,
+SoC Snapdragon 845), avec un noyau mainline.
+
+postmarketOS sert de première étape pour valider le démarrage (noyau, DTB, `boot.img`,
+carte SD) grâce à son shell de débogage par USB ; le rootfs est ensuite remplacé par
+Arch Linux ARM.
 
 Ce projet reprend le travail de **Petr Hodina** (phodina), qui a fait démarrer le XZ3
 sur noyau mainline en 2023 (postmarketOS) puis en 2026 (Mobile NixOS).
