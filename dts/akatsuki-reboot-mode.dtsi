@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Raison de redémarrage lue par le bootloader Sony (X-Boot) : mot de 32 bits
+ * en IMEM à 0x146bf65c (« restart_reason » du noyau Android SDM845).
+ *
+ * Constat du 10/10/2026 : `reboot bootloader` via le PON (mode-bootloader = 2,
+ * DTB mainline) est ignoré par X-Boot, le téléphone redémarre normalement.
+ * La ligne de commande passée par X-Boot contient « warmboot=0x77665501 » :
+ * c'est la valeur Qualcomm/Sony de l'IMEM pour un redémarrage normal.
+ * Valeurs : 0x77665500 fastboot, 0x77665501 normal, 0x77665502 recovery.
+ *
+ * Pilote syscon-reboot-mode (intégré au noyau pmOS 7.1). Écrire dans l'IMEM
+ * est sans risque : c'est une petite mémoire vive interne, effacée à
+ * l'extinction ; aucun stockage n'est touché.
+ */
+
+&{/soc@0/sram@14680000} {
+	reboot-mode {
+		compatible = "syscon-reboot-mode";
+		offset = <0x3f65c>;	/* 0x146bf65c - 0x14680000 */
+		mode-normal = <0x77665501>;
+		mode-bootloader = <0x77665500>;
+		mode-recovery = <0x77665502>;
+	};
+};

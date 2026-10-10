@@ -61,7 +61,16 @@ curl http://172.16.42.1/ > dmesg-xz3.txt              # ou ouvrir l'adresse dans
 curl http://172.16.42.1/fastboot                      # renvoyer le téléphone en fastboot
 ```
 
-(`/reboot` et `/poweroff` existent aussi.)
+(`/reboot`, `/recovery` et `/poweroff` existent aussi.)
+
+`http://172.16.42.1/precedent` affiche le **journal du démarrage précédent** (pstore /
+ramoops) : utile quand un démarrage a échoué puis que le téléphone a redémarré.
+
+Depuis la v4 : si le PC n'arrive pas à reconnaître le téléphone (`error -71`), l'init
+déconnecte et reconnecte le gadget USB toutes les 15 s jusqu'à ce que ça marche.
+`/fastboot` passe par la raison de redémarrage Sony en IMEM
+([`dts/akatsuki-reboot-mode.dtsi`](../dts/akatsuki-reboot-mode.dtsi)) : la v3, qui
+utilisait le registre PON, redémarrait simplement sur le noyau.
 
 **Par le port série** (ne répondait pas lors du premier essai réel) :
 

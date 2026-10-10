@@ -8,7 +8,7 @@
 # Usage :
 #   scripts/build-dtb.sh <entrée.dtb> <sortie.dtb> [fragment.dtsi ...]
 #
-# Sans fragment, dts/akatsuki-ecran-charge.dtsi est utilisé.
+# Sans fragment, dts/akatsuki-ecran-charge.dtsi et dts/akatsuki-reboot-mode.dtsi sont utilisés.
 #
 # Exemple :
 #   scripts/build-dtb.sh x/boot/dtbs/qcom/sdm845-sony-xperia-tama-akatsuki.dtb \
@@ -23,7 +23,7 @@ fi
 
 here="$(cd "$(dirname "$0")" && pwd)"
 in="$1"; out="$2"; shift 2
-[ "$#" -gt 0 ] || set -- "$here/../dts/akatsuki-ecran-charge.dtsi"
+[ "$#" -gt 0 ] || set -- "$here/../dts/akatsuki-ecran-charge.dtsi" "$here/../dts/akatsuki-reboot-mode.dtsi"
 
 command -v dtc >/dev/null 2>&1 || { echo "Erreur : dtc est requis (paquet dtc)." >&2; exit 2; }
 [ -f "$in" ] || { echo "Erreur : fichier introuvable : $in" >&2; exit 2; }

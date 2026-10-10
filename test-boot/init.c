@@ -74,6 +74,16 @@ static long sc6(long n, long a, long b, long c, long d, long e, long f)
 }
 #define sc(n, a, b, c) sc6(n, (long)(a), (long)(b), (long)(c), 0, 0, 0)
 
+static int cmdline_has(const char *word);
+
+#define SYS_clock_gettime 113
+static long now_s(void)
+{
+	long ts[2] = { 0, 0 };
+	sc(SYS_clock_gettime, 1 /* CLOCK_MONOTONIC */, ts, 0);
+	return ts[0];
+}
+
 /* clang peut générer des appels à memset/memcpy même en mode autonome */
 void *memset(void *d, int c, unsigned long n)
 {
@@ -229,9 +239,10 @@ static int first_udc(char *out, int max)
 /* ------------------------------------------------------------- gadget USB */
 #define G "/sys/kernel/config/usb_gadget/akatsuki"
 
+static char udc[64];
+
 static int setup_gadget(void)
 {
-	char udc[64];
 	int i;
 
 	xmkdir(G);
@@ -336,6 +347,7 @@ static void do_reboot(long cmd, const char *arg)
 static long tty = -1;
 
 /* Écriture complète sur fd (port série ou socket), abandon si le PC ne lit plus */
+#define OUT(fd, lit) out_write(fd, lit, sizeof(lit) - 1)
 static void out_write(long fd, const char *b, long n)
 {
 	int tries = 0;
@@ -413,6 +425,88 @@ struct pollfd {
 	short events, revents;
 };
 
+static int starts(const char *s, const char *pfx)
+{
+	while (*pfx)
+		if (*s++ != *pfx++)
+			return 0;
+	return 1;
+}
+
+/* --------------------------------------- journaux du démarrage précédent (pstore) */
+/* Le noyau garde sa console dans la RAM réservée « ramoops » ; après un redémarrage
+ * à chaud (plantage, chien de garde, reboot), elle apparaît dans /sys/fs/pstore. */
+static void dump_file(long out, const char *path)
+{
+	char b[4096];
+	long fd = xopen(path, O_RDONLY), n;
+	if (fd < 0)
+		return;
+	while ((n = sc(SYS_read, fd, b, sizeof b)) > 0)
+		out_write(out, b, n);
+	sc(SYS_close, fd, 0, 0);
+}
+
+static void dump_pstore(long out)
+{
+	char buf[2048], path[300];
+	long fd = xopen("/sys/fs/pstore", O_RDONLY | O_DIRECTORY), n, i;
+	int any = 0;
+	if (fd < 0) {
+		OUT(out, "pstore indisponible\n");
+		return;
+	}
+	while ((n = sc(SYS_getdents64, fd, buf, sizeof buf)) > 0) {
+		for (i = 0; i < n;) {
+			u16 reclen = *(u16 *)(buf + i + 16);
+			char *name = buf + i + 19, *p = path;
+			if (name[0] != '.') {
+				p = put_s(p, "/sys/fs/pstore/");
+				p = put_s(p, name);
+				*p = 0;
+				OUT(out, "\n===== ");
+				out_write(out, name, slen(name));
+				OUT(out, " =====\n");
+				dump_file(out, path);
+				any = 1;
+			}
+			i += reclen;
+		}
+	}
+	sc(SYS_close, fd, 0, 0);
+	if (!any)
+		OUT(out, "aucun journal du demarrage precedent (demarrage a froid ?)\n");
+}
+
+/* ------------------------------------- surveillance de la connexion USB */
+/* Constat réel : parfois le PC n'arrive pas à énumérer le téléphone (error -71).
+ * Si l'UDC n'est pas « configured » depuis 15 s, on déconnecte et reconnecte le
+ * gadget (le PC refait alors l'énumération). */
+static int usb_configured(void)
+{
+	char path[128], st[32], *p = path;
+	long fd, n;
+	p = put_s(p, "/sys/class/udc/");
+	p = put_s(p, udc);
+	p = put_s(p, "/state");
+	*p = 0;
+	fd = xopen(path, O_RDONLY);
+	if (fd < 0)
+		return 0;
+	n = sc(SYS_read, fd, st, sizeof st - 1);
+	sc(SYS_close, fd, 0, 0);
+	st[n > 0 ? n : 0] = 0;
+	return starts(st, "configured");
+}
+
+static void usb_reconnect(void)
+{
+	log("USB non configuré depuis 15 s : reconnexion du gadget");
+	write_file(G "/UDC", "\n");
+	sleep_ms(1000);
+	write_file(G "/UDC", udc);
+}
+
 /* ------------------------------------------- serveur web : journal par le réseau */
 #define SYS_bind 200
 #define SYS_listen 201
@@ -447,17 +541,9 @@ static long http_listen(void)
 	return s;
 }
 
-static int starts(const char *s, const char *pfx)
-{
-	while (*pfx)
-		if (*s++ != *pfx++)
-			return 0;
-	return 1;
-}
-
 static const char page_cmds[] =
-	"\n--- Commandes : http://172.16.42.1/fastboot (retour en fastboot), "
-	"/reboot, /poweroff ---\n";
+	"\n--- http://172.16.42.1/precedent : journal du demarrage precedent ---\n"
+	"--- Commandes : /fastboot (retour en fastboot), /reboot, /recovery, /poweroff ---\n";
 
 /* GET / : journal complet. GET /fastboot, /reboot, /poweroff : commandes. */
 static void http_client(long c)
@@ -476,17 +562,25 @@ static void http_client(long c)
 
 	out_write(c, hdr, sizeof hdr - 1);
 	if (starts(req, "GET /fastboot")) {
-		out_write(c, "retour en fastboot\n", 19);
+		OUT(c, "retour en fastboot\n");
 		sc(SYS_shutdown, c, 1, 0);
 		sc(SYS_close, c, 0, 0);
 		do_reboot(RB_RESTART2, "bootloader");
+	} else if (starts(req, "GET /precedent")) {
+		OUT(c, "Journaux du demarrage precedent (pstore / ramoops) :\n");
+		dump_pstore(c);
+	} else if (starts(req, "GET /recovery")) {
+		OUT(c, "redemarrage en recovery\n");
+		sc(SYS_shutdown, c, 1, 0);
+		sc(SYS_close, c, 0, 0);
+		do_reboot(RB_RESTART2, "recovery");
 	} else if (starts(req, "GET /reboot")) {
-		out_write(c, "redemarrage\n", 12);
+		OUT(c, "redemarrage\n");
 		sc(SYS_shutdown, c, 1, 0);
 		sc(SYS_close, c, 0, 0);
 		do_reboot(RB_RESTART, 0);
 	} else if (starts(req, "GET /poweroff")) {
-		out_write(c, "extinction\n", 11);
+		OUT(c, "extinction\n");
 		sc(SYS_shutdown, c, 1, 0);
 		sc(SYS_close, c, 0, 0);
 		do_reboot(RB_POWER_OFF, 0);
@@ -505,6 +599,8 @@ static void main_loop(void)
 	long follow = xopen("/dev/kmsg", O_RDONLY | O_NONBLOCK), n, i;
 	long web = http_listen();
 	long last_tty_err = 0;
+	long last_cfg = now_s();
+	int emul = cmdline_has("akatsuki-test.qemu");
 
 	if (follow >= 0)
 		sc(SYS_lseek, follow, 0, 2 /* SEEK_END : seulement les nouveaux */);
@@ -535,6 +631,14 @@ static void main_loop(void)
 		if (sc6(SYS_ppoll, (long)p, 3, (long)ts, 0, 8, 0) < 0) {
 			sleep_ms(100);
 			continue;
+		}
+		if (!emul) {
+			if (usb_configured())
+				last_cfg = now_s();
+			else if (now_s() - last_cfg >= 15) {
+				usb_reconnect();
+				last_cfg = now_s();
+			}
 		}
 		if (p[2].revents & 1) {
 			long c = sc6(SYS_accept4, web, 0, 0, O_CLOEXEC, 0, 0);
@@ -608,6 +712,7 @@ static void run(void)
 	log("init lancé : le noyau a démarré !");
 	log("============================================");
 	xmount("configfs", "/sys/kernel/config", "configfs");
+	xmount("pstore", "/sys/fs/pstore", "pstore");
 
 	for (i = 0; i < sizeof modules / sizeof modules[0]; i++)
 		load_module(modules[i]);

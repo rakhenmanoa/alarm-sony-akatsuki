@@ -62,6 +62,6 @@ echo "== DTB (écran simple-framebuffer, UFS vérifié désactivé)"
 echo "== boot.img"
 "$repo/scripts/make-bootimg.sh" "$tmp/apk/boot/vmlinuz" "$tmp/akatsuki.dtb" \
 	"$tmp/initramfs.img" "$out" \
-	"console=tty0 console=ttyMSM0,115200 clk_ignore_unused pd_ignore_unused"
+	"console=tty0 console=ttyMSM0,115200 clk_ignore_unused pd_ignore_unused printk.devkmsg=on"
 echo
 echo "Prêt : $out  →  fastboot boot $out"
