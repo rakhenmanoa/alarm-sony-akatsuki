@@ -32,7 +32,7 @@ fastboot boot boot-test-noyau.img
 | Messages du noyau à l'écran, puis `akatsuki-test: init lancé : le noyau a démarré !` | ✅ Noyau, DTB et écran OK |
 | Un nouveau périphérique USB `18d1:d001` « Xperia XZ3 test noyau » (`lsusb`, `dmesg -w` sur le PC) | ✅ Noyau + USB OK |
 | Écran noir, mais le téléphone **revient tout seul en fastboot** (LED bleue) après ~40 s | 🟡 Le noyau a démarré et lancé init, mais l'USB n'a pas pu être activé |
-| Le téléphone redémarre sur le **recovery** ou change de slot | ❌ Le noyau a planté (redémarrage par le chien de garde) : le bootloader a compté un échec de démarrage. Revenir avec `fastboot --set-active=<slot de LineageOS>` |
+| Le téléphone redémarre sur le **recovery** ou change de slot | ❌ Probablement un plantage du noyau (redémarrage par le chien de garde), que le bootloader a compté comme un échec de démarrage. Revenir avec `fastboot --set-active=<slot de LineageOS>` |
 | Écran noir, rien sur l'USB, pas de redémarrage (attendre 3 min) | ❌ Le noyau ne démarre pas (ou plante avant init) |
 
 Pour éteindre en cas de blocage : **Power + Volume haut** jusqu'à 3 vibrations.
