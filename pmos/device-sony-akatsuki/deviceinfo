@@ -1,0 +1,43 @@
+# Reference: <https://postmarketos.org/deviceinfo>
+# Please do not manually edit this file, unless you know what you are doing.
+#
+# Sony Xperia XZ3 (akatsuki) - brouillon basé sur le travail de Petr Hodina
+# (Mobile NixOS, branche sdm845-devices, janvier 2026).
+#
+# /!\ L'UFS (mémoire interne) DOIT rester désactivé dans le DTB :
+#     le noyau mainline sans le correctif Sony efface le bootloader => brick définitif.
+#     Le rootfs va donc sur la carte SD.
+
+deviceinfo_format_version="0"
+deviceinfo_name="Sony Xperia XZ3"
+deviceinfo_manufacturer="Sony"
+deviceinfo_codename="sony-akatsuki"
+deviceinfo_year="2018"
+deviceinfo_arch="aarch64"
+
+# Device related
+deviceinfo_chassis="handset"
+deviceinfo_keyboard="false"
+deviceinfo_external_storage="true"
+deviceinfo_screen_width="1440"
+deviceinfo_screen_height="2880"
+deviceinfo_getty=""
+
+# Noyau communautaire SDM845 de postmarketOS (contient sdm845-sony-xperia-tama-akatsuki.dtb)
+deviceinfo_dtb="qcom/sdm845-sony-xperia-tama-akatsuki"
+deviceinfo_append_dtb="true"
+
+# Bootloader related (valeurs reprises de la famille sdm845-mainline de Mobile NixOS)
+deviceinfo_flash_method="fastboot"
+deviceinfo_generate_bootimg="true"
+deviceinfo_bootimg_qcdt="false"
+deviceinfo_flash_offset_base="0x00000000"
+deviceinfo_flash_offset_kernel="0x00008000"
+deviceinfo_flash_offset_ramdisk="0x01000000"
+deviceinfo_flash_offset_second="0x00000000"
+deviceinfo_flash_offset_tags="0x00000100"
+deviceinfo_flash_pagesize="4096"
+deviceinfo_flash_sparse="true"
+
+# Le bootloader Sony ajoute déjà sa propre ligne de commande.
+deviceinfo_kernel_cmdline=""

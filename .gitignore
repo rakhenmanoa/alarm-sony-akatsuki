@@ -1,0 +1,20 @@
+# Images et binaires générés
+*.img
+*.dtb
+Image
+Image.gz
+Image.gz-dtb
+*.tar.gz
+*.tar.xz
+*.apk
+
+# Firmwares propriétaires : jamais dans le dépôt
+firmware/
+*.mbn
+*.bin
+*.fw
+
+# Sauvegardes de partitions du téléphone (données personnelles, IMEI...)
+backup/
+modemst*
+*.ta

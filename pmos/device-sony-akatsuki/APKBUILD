@@ -1,0 +1,39 @@
+# Reference: <https://postmarketos.org/devicepkg>
+# Brouillon - Sony Xperia XZ3 (akatsuki), démarrage depuis la carte SD.
+pkgname=device-sony-akatsuki
+pkgdesc="Sony Xperia XZ3"
+pkgver=1
+pkgrel=0
+url="https://postmarketos.org"
+license="MIT"
+arch="aarch64"
+options="!check !archcheck"
+# À vérifier dans pmaports : nom exact du paquet commun SDM845 (soc-qcom-sdm845)
+depends="
+	linux-postmarketos-qcom-sdm845
+	mkbootimg
+	postmarketos-base
+	soc-qcom-sdm845
+"
+makedepends="devicepkg-dev"
+subpackages="$pkgname-nonfree-firmware:nonfree_firmware"
+source="deviceinfo"
+
+build() {
+	devicepkg_build $startdir $pkgname
+}
+
+package() {
+	devicepkg_package $startdir $pkgname
+}
+
+nonfree_firmware() {
+	pkgdesc="Firmwares propriétaires (GPU, DSP, Wi-Fi, modem) du Xperia XZ3"
+	depends="firmware-sony-akatsuki soc-qcom-sdm845-nonfree-firmware"
+	mkdir "$subpkgdir"
+}
+
+# À régénérer avec : pmbootstrap checksum device-sony-akatsuki
+sha512sums="
+SKIP  deviceinfo
+"

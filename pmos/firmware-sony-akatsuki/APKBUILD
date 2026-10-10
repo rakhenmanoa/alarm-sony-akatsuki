@@ -1,0 +1,28 @@
+# Brouillon - firmwares du Xperia XZ3, repris du dépôt de Petr Hodina
+# (gitlab.com/phodina/firmware-sony-akatsuki), utilisé par son portage Mobile NixOS.
+# Le dépôt suit déjà l'arborescence postmarketOS (lib/firmware/postmarketos/...).
+pkgname=firmware-sony-akatsuki
+pkgver=0_git20260110
+pkgrel=0
+# Remplacer "master" par un hash de commit précis avant toute utilisation sérieuse
+_commit="master"
+pkgdesc="Firmwares propriétaires du Sony Xperia XZ3"
+url="https://gitlab.com/phodina/firmware-sony-akatsuki"
+arch="aarch64"
+license="proprietary"
+options="!check !strip !archcheck !tracedeps pmb:cross-native"
+source="$pkgname-$_commit.tar.gz::https://gitlab.com/phodina/firmware-sony-akatsuki/-/archive/$_commit/firmware-sony-akatsuki-$_commit.tar.gz"
+builddir="$srcdir/firmware-sony-akatsuki-$_commit"
+
+package() {
+	install -d "$pkgdir"/lib/firmware
+	cp -r lib/firmware/postmarketos/* "$pkgdir"/lib/firmware/
+	# Le reste de lib/firmware (hors dossier postmarketos), comme dans Mobile NixOS
+	find lib/firmware -mindepth 1 -maxdepth 1 ! -name postmarketos \
+		-exec cp -r {} "$pkgdir"/lib/firmware/ \;
+}
+
+# À régénérer avec : pmbootstrap checksum firmware-sony-akatsuki
+sha512sums="
+SKIP  firmware-sony-akatsuki-master.tar.gz
+"
