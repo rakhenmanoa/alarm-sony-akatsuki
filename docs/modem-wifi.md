@@ -114,8 +114,37 @@ Résultats :
 | Étape | Résultat |
 |---|---|
 | démarrage avec `boot-arch-modem.img` | ✅ démarrage normal, modem vu (`remoteproc1: 4080000.remoteproc is available`), arrêté |
-| modem (`rmtfs -s`) | à tester |
-| Wi-Fi (`wlan0`, scan, connexion) | à tester |
+| modem (`rmtfs -s`) | ⚠️ `now up`, EFS lu (fs1, fs2, fsg, fsc ; `fsg_oem_1/2` refusés), zone `0xfdc01000` acceptée ; puis `fatal error without message` **40 s après chaque démarrage**, en boucle. Seuls les services de base du modem (66, 43) apparaissent dans `qrtr-lookup` |
+| IPA (`boot-arch-ipa.img`) | à tester (hypothèse : le modem attend l'IPA de Linux) |
+| Wi-Fi (`wlan0`, scan, connexion) | pas encore (le service Wi-Fi du modem n'apparaît pas) |
+
+## 4 bis. Essai avec l'IPA (`boot-arch-ipa.img`)
+
+Sur SDM845, le modem attend que Linux initialise l'IPA (accélérateur réseau partagé) ;
+le plantage régulier 40 s après le démarrage en est le symptôme probable. Le DTB de
+`boot-arch-ipa.img` active l'IPA (firmware `ipa_fws.mbn` chargé par Linux).
+
+`ipa_fws.mbn` reste hors de `/usr/lib/firmware` : au démarrage, le pilote `ipa` échoue
+proprement (`ipa_fws.mbn` introuvable), puis on le relie à la main :
+
+```sh
+fastboot flash boot_b boot-arch-ipa.img && fastboot reboot     # depuis le PC, slot B actif
+```
+
+```sh
+# session 1
+dmesg -w
+# session 2 (root)
+echo -n /root/fw-essai > /sys/module/firmware_class/parameters/path
+echo 1e40000.ipa > /sys/bus/platform/drivers/ipa/bind       # 1) l'IPA d'abord
+tqftpserv &
+rmtfs -o /var/lib/rmtfs -s -v                                # 2) puis le modem
+```
+
+Attendu : `ipa 1e40000.ipa: IPA driver initialized`, puis, une fois le modem démarré,
+`ipa … received modem running event` et une interface `rmnet_ipa0` ; le modem ne doit
+plus planter au bout de 40 s, et `qrtr-lookup` doit montrer beaucoup plus de services
+sur le nœud 0 (dont 69, le Wi-Fi).
 
 Si tout fonctionne, il restera à rendre l'ensemble automatique (firmwares dans
 `/usr/lib/firmware`, services `tqftpserv` et `rmtfs` activés au démarrage). Les données

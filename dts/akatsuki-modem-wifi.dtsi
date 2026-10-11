@@ -30,3 +30,18 @@
 	qcom,snoc-host-cap-8bit-quirk;
 	status = "okay";
 };
+
+/*
+ * IPA (accélérateur réseau partagé AP/modem). Sur SDM845, le modem attend que Linux
+ * initialise l'IPA ; sans lui, il plante environ 40 s après son démarrage (constaté
+ * le 11/10/2026 : « fatal error without message » toutes les 43 s).
+ * « self » : c'est Linux qui charge le firmware GSI (ipa_fws.mbn, via TrustZone).
+ * Si ipa_fws.mbn n'est pas dans /usr/lib/firmware, le pilote échoue proprement au
+ * démarrage ; on le relie ensuite à la main (docs/modem-wifi.md).
+ */
+&{/soc@0/ipa@1e40000} {
+	qcom,gsi-loader = "self";
+	memory-region = <&{/reserved-memory/ipa-fw@8c400000}>;
+	firmware-name = "qcom/sdm845/Sony/tama/ipa_fws.mbn";
+	status = "okay";
+};
