@@ -33,7 +33,7 @@ Après le démarrage, rien ne doit changer ; un nouveau coprocesseur apparaît, 
 
 ```sh
 grep . /sys/class/remoteproc/*/name /sys/class/remoteproc/*/state
-# …/remoteprocN/name:4080000.remoteproc   …/remoteprocN/state:offline   (numéro variable : remoteproc1 le 11/10/2026)
+# …/remoteprocN/name:4080000.remoteproc   …/remoteprocN/state:offline   (11/10/2026 : remoteproc0 = adsp, remoteproc1 = modem, remoteproc2 = cdsp)
 ```
 
 ## 2. Copier l'EFS (sous LineageOS)

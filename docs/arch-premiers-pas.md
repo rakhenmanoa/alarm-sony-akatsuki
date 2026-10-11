@@ -151,7 +151,7 @@ echo start > /sys/class/remoteproc/remoteprocN/state
 | Coprocesseur | Démarrage manuel | Remarque |
 |---|---|---|
 | ADSP (`remoteproc0`) | ✅ `remote processor adsp is now up` | services audio APR présents ; carte son pas encore décrite dans le DTB (`No dais found in DT`) |
-| CDSP (`remoteproc1`) | ✅ `remote processor cdsp is now up` | 8 canaux de calcul fastrpc |
+| CDSP (`remoteproc1`, `remoteproc2` avec le modem activé) | ✅ `remote processor cdsp is now up` | 8 canaux de calcul fastrpc |
 | Venus (vidéo) | ❌ redémarrage instantané | aucune trace (pas même la ligne `non legacy binding` dans le journal persistant) : coupure par TrustZone ou blocage matériel, cause à chercher |
 | GPU (`a630_zap.mbn`) | pas encore testé | |
 
