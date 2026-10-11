@@ -20,3 +20,27 @@ LH599QH3-EDB1 panel driver for Sony Xperia XZ3 » (`panel-lgd-lh599qh3-edb1.c`,
    `panel@0` de DSI0 (déjà présent, sans `compatible`) les propriétés du pilote.
 3. Essai prudent : module chargé à la main ; au pire écran noir ou redémarrage.
 4. Ensuite : tactile (`atmel_mxt_ts`, même méthode).
+
+## État au 11/10/2026
+
+- Module compilé : [`modules/panel-lgd-lh599qh3-edb1/`](../modules/panel-lgd-lh599qh3-edb1/)
+  (vermagic `7.1.0-rc1-sdm845`, 33 symboles importés, tous exportés par le noyau pmOS).
+- DTB : [`dts/akatsuki-ecran-dsi.dtsi`](../dts/akatsuki-ecran-dsi.dtsi), activé par
+  `ECRAN=dsi` : framebuffer simple désactivé, MDSS et dispcc réactivés, `panel@0`
+  de DSI0 avec `compatible = "lgd,lh599qh3-edb1-um1"`, `reset-gpios` = GPIO 6 active
+  basse (comme Hodina), `avdd-supply` = LDO28 (3,0 V), `vddio-supply` = LDO14 (1,84 V,
+  déjà présent), DCDC de l'OLED (GPIO 133) toujours allumé.
+- boot.img : `ECRAN=dsi SANS_VERROU=1 test-boot/build.sh … boot-arch-ecran.img`.
+
+### Premier essai
+
+```sh
+fastboot flash boot_b boot-arch-ecran.img && fastboot reboot
+# puis, root, téléphone démarré (SSH) :
+insmod /root/panel-lgd-lh599qh3-edb1.ko
+dmesg | grep -iE 'panel|dsi|dpu|msm|drm' | tail -40
+ls /dev/dri /sys/class/drm
+```
+
+Si rien ne s'affiche : essayer la polarité inverse du reset (GPIO 6 active haute,
+comme l'exemple de la liaison DT).

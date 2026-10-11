@@ -1,0 +1,48 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Écran réel du Xperia XZ3 : panneau LG Display LH599QH3-EDB1 (1440 × 2880, OLED,
+ * DSI mode commande, compression DSC 1.1), pilote panel-lgd-lh599qh3-edb1
+ * (série v2 de Marijn Suijten, déc. 2025, compilé en module : docs/ecran.md).
+ *
+ * À appliquer APRÈS akatsuki-ecran-charge.dtsi (ECRAN=dsi dans build-dtb.sh) :
+ * remplace le framebuffer simple (inutile : le bootloader éteint l'écran) par la
+ * chaîne d'affichage complète MDSS → DPU → DSI0 → panneau.
+ *
+ * Sans le module du panneau, le pilote d'affichage attend (report de sonde) :
+ * aucun effet. Le module se charge à la main pour le premier essai.
+ */
+
+/ {
+	chosen {
+		framebuffer {
+			status = "disabled";
+		};
+	};
+};
+
+&{/soc@0/display-subsystem@ae00000} {	/* MDSS */
+	status = "okay";
+};
+
+&{/soc@0/clock-controller@af00000} {	/* dispcc */
+	status = "okay";
+};
+
+/* Panneau sur DSI0 (nœud déjà décrit par tama.dtsi, sans « compatible » pour le XZ3) */
+&{/soc@0/display-subsystem@ae00000/dsi@ae94000/panel@0} {
+	compatible = "lgd,lh599qh3-edb1-um1";
+	/*
+	 * Nom de propriété attendu par le pilote : reset-gpios. Polarité « active
+	 * basse », comme dans le DTS de P. Hodina (2023) : le pilote met la ligne à 1
+	 * logique pour maintenir le panneau en réinitialisation.
+	 */
+	/delete-property/ panel-reset-gpios;
+	reset-gpios = <&{/soc@0/pinctrl@3400000} 6 1>;	/* GPIO 6, GPIO_ACTIVE_LOW */
+	avdd-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo28}>;	/* 3,0 V */
+	/* vddio-supply (ldo14, 1,84 V) : déjà présent */
+};
+
+/* DCDC de l'OLED (GPIO 133) : à garder allumé, comme sous Android */
+&{/ts-vddio-regulator} {
+	regulator-always-on;
+};
