@@ -115,7 +115,7 @@ Résultats :
 |---|---|
 | démarrage avec `boot-arch-modem.img` | ✅ démarrage normal, modem vu (`remoteproc1: 4080000.remoteproc is available`), arrêté |
 | modem (`rmtfs -s`) | ⚠️ `now up`, EFS lu (fs1, fs2, fsg, fsc ; `fsg_oem_1/2` refusés), zone `0xfdc01000` acceptée ; puis `fatal error without message` **40 s après chaque démarrage**, en boucle. Seuls les services de base du modem (66, 43) apparaissent dans `qrtr-lookup` |
-| IPA (`boot-arch-ipa.img`) | à tester (hypothèse : le modem attend l'IPA de Linux) |
+| IPA (`boot-arch-ipa.img`) | ✅ `IPA driver setup completed successfully`, reçoit les événements du modem ; **mais le modem plante toujours 40 s après son démarrage** : ce n'était pas la cause. `tqftpserv` ne reçoit aucune demande. Pistes : partitions `fsg_oem_1/2` propres à Sony, comparaison avec le démarrage du modem sous LineageOS |
 | Wi-Fi (`wlan0`, scan, connexion) | pas encore (le service Wi-Fi du modem n'apparaît pas) |
 
 ## 4 bis. Essai avec l'IPA (`boot-arch-ipa.img`)
