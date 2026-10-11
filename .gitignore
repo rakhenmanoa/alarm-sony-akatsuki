@@ -21,3 +21,6 @@ modemst*
 # Firmwares extraits du téléphone (signés Qualcomm/Sony) : jamais dans le dépôt
 firmware-akatsuki/
 __pycache__/
+# Données du modem (EFS, contiennent l'IMEI) : jamais dans le dépôt
+efs-akatsuki/
+modem_fs*

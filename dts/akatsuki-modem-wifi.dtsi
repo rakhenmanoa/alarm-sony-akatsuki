@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Modem (MSS) et Wi-Fi (WCN3990, pilote ath10k_snoc) du Xperia XZ3.
+ * Repris du DTS de Petr Hodina (2023) ; désactivés dans le DTB pmOS 7.1_rc1-r4.
+ *
+ * Sur SDM845, le Wi-Fi passe par le modem : c'est le firmware du modem qui
+ * pilote la radio Wi-Fi (wlanmdsp.mbn, servi par tqftpserv). Il faut aussi rmtfs
+ * (données du modem) et le pd-mapper du noyau (module qcom_pd_mapper).
+ *
+ * Le modem n'est PAS démarré automatiquement par le noyau (pilote q6v5-mss) :
+ * c'est « rmtfs -s » ou un « echo start » dans /sys/class/remoteproc qui le lance.
+ * Prérequis : dts/akatsuki-memoire-sony.dtsi (rmtfs à 0xfdc01000, comme l'attend
+ * le firmware du modem Sony).
+ */
+
+/* Modem : firmwares Sony extraits du téléphone (scripts/extraire-firmwares-adb.sh) */
+&{/soc@0/remoteproc@4080000} {
+	firmware-name = "qcom/sdm845/Sony/tama/mba.mbn",
+			"qcom/sdm845/Sony/tama/modem.mbn";
+	status = "okay";
+};
+
+/* Wi-Fi : alimentations de la puce WCN3990 (mêmes régulateurs que Hodina) */
+&{/soc@0/wifi@18800000} {
+	vdd-0.8-cx-mx-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo5}>;
+	vdd-1.8-xo-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo7}>;
+	vdd-1.3-rfa-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo17}>;
+	vdd-3.3-ch0-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo25}>;
+	vdd-3.3-ch1-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo23}>;
+	qcom,snoc-host-cap-8bit-quirk;
+	status = "okay";
+};

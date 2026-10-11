@@ -104,7 +104,7 @@ reboot
 | `qcom/sdm845/Sony/tama/venus.mbn` | vidéo | oui — ⚠️ fait redémarrer le téléphone, ne pas installer |
 | `qcom/sdm845/Sony/tama/a630_zap.mbn` | GPU | oui |
 | `qca/Sony/tama/crnv21.bin` | réglages Bluetooth | oui |
-| `mba.mbn`, `modem.mbn`, `wlanmdsp.mbn` | modem, Wi-Fi | pas encore (modem à activer) |
+| `mba.mbn`, `modem.mbn`, `wlanmdsp.mbn` | modem, Wi-Fi | à partir de `boot-arch-modem.img` : voir [modem-wifi.md](modem-wifi.md) |
 | `slpi.mbn`, `ipa_fws.mbn` | capteurs, réseau du modem | pas encore |
 
 Après redémarrage, vérifier :
