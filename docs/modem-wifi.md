@@ -232,3 +232,11 @@ reboot
 ```
 
 Retour arrière : `rm $M/updates/ath10k_core.ko && depmod -a && reboot`.
+
+**⚠️ Refusé par le noyau pmOS (essai du 11/10/2026)** : `Lockdown: (udev-worker): unsigned
+module loading is restricted`. Le noyau est compilé avec
+`CONFIG_LOCK_DOWN_KERNEL_FORCE_INTEGRITY=y` (verrouillage actif dès le démarrage,
+impossible à lever par la ligne de commande) : tout module non signé par la clé de
+pmOS est refusé, et `ath10k_core` ne se charge plus du tout. **Ne pas utiliser ce
+correctif avec le noyau pmOS** ; il faut un noyau recompilé (avec le patch
+« skip quiet mode »), ou une version de pmOS qui l'intègre.
