@@ -8,7 +8,9 @@
 #       <linux-postmarketos-qcom-sdm845-VERSION.apk>
 #
 # Prérequis côté téléphone : Options pour les développeurs → « Débogage root »
-# (adb root). Outils Android utilisés : sgdisk, mke2fs, toybox tar, gzip, sm.
+# (adb root). Outils Android utilisés : dd, blockdev, mke2fs, toybox tar, gzip, sm.
+# Côté PC : adb, python3 (fabrique la table de partitions), gzip, tar.
+# (Le sgdisk d'Android est une version réduite qui ne sait pas créer de partition.)
 #
 # ⚠️ Dans le téléphone, /dev/block/sda…sdf = mémoire interne UFS (Android ET
 # bootloader). La carte SD est /dev/block/mmcblk0. Le script refuse tout autre
@@ -28,6 +30,7 @@ MNT=/data/local/tmp/alarm-sd
 TMPTAR=/data/local/tmp/alarm-rootfs.tar.gz
 
 command -v adb >/dev/null 2>&1 || die "adb introuvable sur le PC."
+command -v python3 >/dev/null 2>&1 || die "python3 introuvable sur le PC."
 [ -f "$tarball" ] || die "archive Arch Linux ARM introuvable : $tarball"
 [ -f "$apk" ]     || die "paquet noyau pmOS introuvable : $apk"
 [ -d "$overlay" ] || die "dossier rootfs/ du dépôt introuvable : $overlay"
@@ -81,9 +84,28 @@ if [ -n "$(ash "grep -E '^/dev/block/(vold/public:179|mmcblk0)' /proc/mounts")" 
 fi
 
 # -------------------------------------------------------- partitionnement ---
-echo "== Partitionnement (GPT, une partition Linux)"
-ash sgdisk --zap-all "$DEV" >/dev/null 2>&1 || true
-ash sgdisk -n 1:0:0 -t 1:8300 -c 1:ALARM_ROOT "$DEV" || die "sgdisk a échoué."
+echo "== Partitionnement (MBR, une partition Linux du 1er Mio jusqu'à la fin)"
+# Premier Mio de la carte fabriqué sur le PC : table MBR avec une seule partition
+# de type 0x83 (Linux) du secteur 2048 à la fin, le reste à zéro (efface aussi
+# les anciennes signatures de système de fichiers en début de carte).
+mbr="$(mktemp)"
+python3 -I - "$mbr" "$sectors" <<'PY'
+import struct, sys
+out, sectors = sys.argv[1], int(sys.argv[2])
+start = 2048
+count = sectors - start
+assert 0 < count <= 0xFFFFFFFF
+img = bytearray(1024 * 1024)
+img[446:462] = struct.pack("<B3sB3sII", 0x00, b"\xfe\xff\xff", 0x83, b"\xfe\xff\xff", start, count)
+img[510:512] = b"\x55\xaa"
+open(out, "wb").write(img)
+PY
+adb push "$mbr" /data/local/tmp/alarm-mbr.bin >/dev/null
+rm -f "$mbr"
+ash "dd if=/data/local/tmp/alarm-mbr.bin of=$DEV bs=1048576 count=1 && sync && echo DD_OK" | grep -q DD_OK || \
+	die "écriture de la table de partitions impossible."
+ash rm -f /data/local/tmp/alarm-mbr.bin
+ash "blockdev --rereadpt $DEV" >/dev/null 2>&1 || true
 ok=""
 for i in 1 2 3 4 5 6 7 8 9 10; do
 	if [ "$(ash "[ -b $PART ] && echo oui")" = "oui" ]; then ok=1; break; fi
