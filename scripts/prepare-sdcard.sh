@@ -13,7 +13,11 @@
 # Variables optionnelles :
 #   FIRMWARE_DIR  dossier lib/firmware à copier (ex. firmwares de Petr Hodina)
 #
-# Résultat : une partition ext4 « ALARM_ROOT » montée par le noyau en /dev/mmcblk0p1.
+# Résultat (table MBR) :
+#   partition 1 : ext4 « ALARM_ROOT », Arch Linux ARM (/dev/mmcblk0p1 dans le téléphone) ;
+#   partition 2 : FAT32 « XZ3_PARTAGE », 512 Mio à la fin de la carte. Android ne voit
+#                 que celle-ci (il ignore les partitions Linux) : plus de message « carte
+#                 non prise en charge » qui propose de formater. Arch la monte sur /mnt/partage.
 # Identifiants Arch Linux ARM par défaut : alarm/alarm et root/root (à changer).
 
 set -eu
@@ -26,7 +30,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 overlay="$here/../rootfs"
 
 [ "$(id -u)" -eq 0 ] || die "lancer en root (sudo)."
-for c in lsblk sfdisk mkfs.ext4 bsdtar gzip tar findmnt; do
+for c in lsblk sfdisk mkfs.ext4 mkfs.fat bsdtar gzip tar findmnt; do
 	command -v "$c" >/dev/null 2>&1 || die "commande manquante : $c"
 done
 [ -f "$tarball" ] || die "archive Arch Linux ARM introuvable : $tarball"
@@ -64,21 +68,29 @@ read -r answer
 [ "$answer" = "$dev" ] || die "confirmation incorrecte, rien n'a été modifié."
 
 # ------------------------------------------------------------ partitionnement --
-echo "== Partitionnement (GPT, une partition ext4)"
-printf 'label: gpt\n,,L\n' | sfdisk --quiet --wipe always "$dev"
+echo "== Partitionnement (MBR : Arch en ext4 + 512 Mio en FAT32 à la fin)"
+sectors=$((size / 512))
+fat=1048576                                     # 512 Mio en secteurs de 512 octets
+p2start=$(( (sectors - fat) / 2048 * 2048 ))    # aligné sur 1 Mio
+p1size=$((p2start - 2048))
+printf 'label: dos\nstart=2048, size=%s, type=83\nstart=%s, size=%s, type=c\n' \
+	"$p1size" "$p2start" "$((sectors - p2start))" | sfdisk --quiet --wipe always "$dev"
 sync
 
-# Attendre que le noyau voie la nouvelle partition (relecture forcée si besoin).
-part=""
+# Attendre que le noyau voie les deux partitions (relecture forcée si besoin).
+part=""; part2=""
 for i in 1 2 3 4 5 6 7 8 9 10; do
 	udevadm settle 2>/dev/null || true
-	part="$(lsblk -lnpo NAME,TYPE "$dev" | awk '$2 == "part" { print $1; exit }')"
-	[ -n "$part" ] && [ -b "$part" ] && break
+	part="$(lsblk -lnpo NAME,TYPE "$dev" | awk '$2 == "part" { print $1 }' | sed -n 1p)"
+	part2="$(lsblk -lnpo NAME,TYPE "$dev" | awk '$2 == "part" { print $1 }' | sed -n 2p)"
+	[ -n "$part" ] && [ -b "$part" ] && [ -n "$part2" ] && [ -b "$part2" ] && break
 	blockdev --rereadpt "$dev" 2>/dev/null || partx -u "$dev" 2>/dev/null || true
 	sleep 1
 done
-[ -n "$part" ] && [ -b "$part" ] || die "partition introuvable après partitionnement (débrancher et rebrancher la carte, puis relancer)."
+[ -n "$part" ] && [ -b "$part" ] && [ -n "$part2" ] && [ -b "$part2" ] || \
+	die "partitions introuvables après partitionnement (débrancher et rebrancher la carte, puis relancer)."
 
+mkfs.fat -F 32 -n XZ3_PARTAGE "$part2" >/dev/null
 mkfs.ext4 -q -F -L ALARM_ROOT "$part"
 
 mnt="$(mktemp -d)"
@@ -130,6 +142,15 @@ ln -sf /etc/systemd/system/akatsuki-usb-watch.service "$wants/akatsuki-usb-watch
 for svc in sshd systemd-networkd; do
 	[ -e "$mnt/usr/lib/systemd/system/$svc.service" ] && ln -sf "/usr/lib/systemd/system/$svc.service" "$wants/$svc.service"
 done
+
+mkdir -p "$mnt/mnt/partage"
+
+echo "== Partition d'échange (avertissement lisible depuis Android)"
+fatmnt="$(mktemp -d)"
+mount "$part2" "$fatmnt"
+cp "$here/../sdcard/NE-PAS-FORMATER.txt" "$fatmnt/"
+umount "$fatmnt"
+rmdir "$fatmnt"
 
 sync
 echo

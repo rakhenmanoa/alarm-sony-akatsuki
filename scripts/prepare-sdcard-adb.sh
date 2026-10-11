@@ -8,7 +8,12 @@
 #       <linux-postmarketos-qcom-sdm845-VERSION.apk>
 #
 # Prérequis côté téléphone : Options pour les développeurs → « Débogage root »
-# (adb root). Outils Android utilisés : dd, blockdev, mke2fs, toybox tar, gzip, sm.
+# (adb root). Outils Android utilisés : dd, blockdev, mke2fs, newfs_msdos, toybox tar,
+# gzip, sm.
+#
+# Résultat (table MBR) : partition 1 = ext4 « ALARM_ROOT » (Arch) ; partition 2 =
+# FAT32 « XZ3_PARTAGE », 512 Mio à la fin. Android ne voit que la partition 2 (il
+# ignore les partitions Linux) : plus de « carte non prise en charge » à formater.
 # Côté PC : adb, python3 (fabrique la table de partitions), gzip, tar.
 # (Le sgdisk d'Android est une version réduite qui ne sait pas créer de partition.)
 #
@@ -26,6 +31,8 @@ here="$(cd "$(dirname "$0")" && pwd)"
 overlay="$here/../rootfs"
 DEV=/dev/block/mmcblk0
 PART=/dev/block/mmcblk0p1
+PART2=/dev/block/mmcblk0p2
+FATMNT=/data/local/tmp/alarm-fat
 MNT=/data/local/tmp/alarm-sd
 TMPTAR=/data/local/tmp/alarm-rootfs.tar.gz
 
@@ -84,19 +91,23 @@ if [ -n "$(ash "grep -E '^/dev/block/(vold/public:179|mmcblk0)' /proc/mounts")" 
 fi
 
 # -------------------------------------------------------- partitionnement ---
-echo "== Partitionnement (MBR, une partition Linux du 1er Mio jusqu'à la fin)"
-# Premier Mio de la carte fabriqué sur le PC : table MBR avec une seule partition
-# de type 0x83 (Linux) du secteur 2048 à la fin, le reste à zéro (efface aussi
-# les anciennes signatures de système de fichiers en début de carte).
+echo "== Partitionnement (MBR : Arch en ext4 + 512 Mio en FAT32 à la fin)"
+# Premier Mio de la carte fabriqué sur le PC : table MBR à deux partitions, le
+# reste à zéro (efface aussi les anciennes signatures en début de carte).
+#   1 : type 0x83 (Linux), du secteur 2048 jusqu'aux 512 derniers Mio ;
+#   2 : type 0x0c (FAT32 LBA), les 512 derniers Mio (alignés sur 1 Mio).
 mbr="$(mktemp)"
 python3 -I - "$mbr" "$sectors" <<'PY'
 import struct, sys
 out, sectors = sys.argv[1], int(sys.argv[2])
-start = 2048
-count = sectors - start
-assert 0 < count <= 0xFFFFFFFF
+fat = 1048576                                   # 512 Mio
+p2 = (sectors - fat) // 2048 * 2048
+parts = [(0x83, 2048, p2 - 2048), (0x0C, p2, sectors - p2)]
 img = bytearray(1024 * 1024)
-img[446:462] = struct.pack("<B3sB3sII", 0x00, b"\xfe\xff\xff", 0x83, b"\xfe\xff\xff", start, count)
+for i, (typ, start, count) in enumerate(parts):
+    assert 0 < count <= 0xFFFFFFFF
+    off = 446 + 16 * i
+    img[off:off + 16] = struct.pack("<B3sB3sII", 0x00, b"\xfe\xff\xff", typ, b"\xfe\xff\xff", start, count)
 img[510:512] = b"\x55\xaa"
 open(out, "wb").write(img)
 PY
@@ -108,13 +119,21 @@ ash rm -f /data/local/tmp/alarm-mbr.bin
 ash "blockdev --rereadpt $DEV" >/dev/null 2>&1 || true
 ok=""
 for i in 1 2 3 4 5 6 7 8 9 10; do
-	if [ "$(ash "[ -b $PART ] && echo oui")" = "oui" ]; then ok=1; break; fi
+	if [ "$(ash "[ -b $PART ] && [ -b $PART2 ] && echo oui")" = "oui" ]; then ok=1; break; fi
 	ash "blockdev --rereadpt $DEV" >/dev/null 2>&1 || true
 	sleep 1
 done
-[ -n "$ok" ] || die "$PART n'apparaît pas. Retirer et remettre la carte, puis relancer."
-# Android peut tenter de monter la nouvelle partition : on s'assure que non
-for m in $(ash "grep '^$PART ' /proc/mounts | cut -d' ' -f2"); do ash umount "$m" || true; done
+[ -n "$ok" ] || die "$PART / $PART2 n'apparaissent pas. Retirer et remettre la carte, puis relancer."
+# Android peut tenter de monter les nouvelles partitions : on s'assure que non
+for vol in $(ash sm list-volumes public 2>/dev/null | awk '/^public:179/ { print $1 }'); do
+	ash sm unmount "$vol" >/dev/null 2>&1 || true
+done
+for m in $(ash "grep -E '^/dev/block/(vold/public:179|mmcblk0)' /proc/mounts | cut -d' ' -f2"); do
+	ash umount "$m" >/dev/null 2>&1 || true
+done
+
+echo "== Formatage FAT32 de la partition d'échange (XZ3_PARTAGE)"
+ash newfs_msdos -F 32 -L XZ3_PARTAGE "$PART2" >/dev/null || die "newfs_msdos a échoué."
 
 echo "== Formatage ext4 (ALARM_ROOT)"
 ash mke2fs -F -t ext4 -L ALARM_ROOT "$PART" >/dev/null || die "mke2fs a échoué."
@@ -177,13 +196,22 @@ for svc in sshd systemd-networkd; do
 	fi
 done
 
+ash mkdir -p "$MNT/mnt/partage"
+
 ash sync
 ash umount "$MNT"
 ash rmdir "$MNT" 2>/dev/null || true
 trap 'rm -rf "$work"' EXIT
 
+echo "== Partition d'échange (avertissement lisible depuis Android)"
+ash "mkdir -p $FATMNT && mount -t vfat $PART2 $FATMNT" || die "montage de la partition FAT impossible."
+adb push "$here/../sdcard/NE-PAS-FORMATER.txt" "$FATMNT/" >/dev/null
+ash "sync; umount $FATMNT; rmdir $FATMNT"
+
 echo
-echo "Carte SD prête (noyau $kver). Android affichera peut-être « carte SD non prise"
-echo "en charge » : NE PAS la formater depuis Android, l'ignorer."
+echo "Carte SD prête (noyau $kver)."
+echo "Redémarrer le téléphone (ou retirer et remettre la carte) : Android montera la"
+echo "partition d'échange de 512 Mio comme une carte SD normale. Ne jamais la formater"
+echo "depuis Android (voir NE-PAS-FORMATER.txt sur la carte)."
 echo "Suite : flasher boot-arch.img dans boot_b (voir docs/premier-demarrage.md)."
 echo "Identifiants par défaut : alarm/alarm et root/root (à changer dès le premier accès)."

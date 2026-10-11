@@ -72,8 +72,20 @@ scripts/prepare-sdcard-adb.sh ArchLinuxARM-aarch64-latest.tar.gz \
 
 Le script n'accepte que `/dev/block/mmcblk0` et vérifie que c'est bien une carte SD
 (`/sys/block/mmcblk0/device/type` = `SD`) : dans le téléphone, `/dev/block/sda…sdf` sont
-la **mémoire interne** (Android et bootloader). Ensuite, Android peut signaler une
-« carte SD non prise en charge » : **ne pas** la formater depuis Android.
+la **mémoire interne** (Android et bootloader). Redémarrer ensuite le téléphone (ou
+retirer et remettre la carte).
+
+### Organisation de la carte
+
+| Partition | Système de fichiers | Contenu | Vue par |
+|---|---|---|---|
+| 1 (`/dev/mmcblk0p1`) | ext4 `ALARM_ROOT` | Arch Linux ARM | Arch seulement |
+| 2 (`/dev/mmcblk0p2`, 512 Mio à la fin) | FAT32 `XZ3_PARTAGE` | échange de fichiers + `NE-PAS-FORMATER.txt` | Android, Arch (`/mnt/partage`), PC |
+
+Android ignore les partitions Linux : il ne voit que la petite partition FAT32 et la
+monte comme une carte SD normale. Il ne propose donc plus de « configurer » (formater)
+une carte « non prise en charge ». Le bouton *Formater* reste dans *Paramètres →
+Stockage* : ne jamais l'utiliser sur cette carte.
 
 ## 3. Construire le boot.img
 

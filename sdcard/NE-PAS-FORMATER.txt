@@ -1,0 +1,13 @@
+CETTE CARTE SD CONTIENT ARCH LINUX ARM POUR LE XPERIA XZ3.
+NE PAS LA FORMATER DEPUIS ANDROID.
+
+Organisation de la carte :
+  - partition 1 (ext4, invisible pour Android) : le système Arch Linux ARM,
+    démarré par le slot B du téléphone (boot_b) ;
+  - partition 2 (FAT32, celle-ci) : espace d'échange, lisible par Android,
+    par Arch (dans /mnt/partage) et par n'importe quel PC.
+
+Android ne voit que cette petite partition : c'est voulu. Si Android propose
+de « configurer » ou de « formater » la carte, refuser, sinon Arch est effacé.
+
+Projet : https://github.com/rakhenmanoa/alarm-sony-akatsuki

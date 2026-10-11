@@ -3,6 +3,12 @@
 État au premier démarrage d'Arch depuis la carte SD : système sain (`systemctl --failed`
 vide), 58 Go sur `/`, SSH par USB, chargeur `pmi8998-charger` détecté.
 
+## Partition d'échange
+
+`/mnt/partage` (partition 2 de la carte, FAT32, 512 Mio) est lisible depuis Arch, depuis
+LineageOS (comme carte SD) et depuis un PC. Elle est montée à la première utilisation.
+(Cartes préparées après le 11/10/2026 ; une carte plus ancienne n'a qu'une partition.)
+
 ## Se connecter
 
 ```sh

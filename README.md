@@ -53,7 +53,8 @@ Le correctif Sony existe dans le noyau d'origine (commit `cfd1489` du noyau Sail
 | `scripts/check-dtb-ufs.sh` | Garde-fou : refuse tout DTB où l'UFS est actif |
 | `scripts/make-bootimg.sh` | Assemble un `boot.img` (noyau + DTB + initramfs) avec les bons offsets |
 | `scripts/prepare-sdcard-adb.sh` | Même chose, carte **dans le téléphone** sous LineageOS (adb root) ; refuse tout sauf la carte SD |
-| `scripts/prepare-sdcard.sh` | Prépare la carte micro-SD : Arch Linux ARM + modules pmOS + réseau USB (nombreux garde-fous) |
+| `sdcard/NE-PAS-FORMATER.txt` | Avertissement copié sur la partition FAT32 de la carte, visible depuis Android |
+| `scripts/prepare-sdcard.sh` | Prépare la carte micro-SD : Arch (ext4) + partition d'échange FAT32 que seule Android voit, modules pmOS, réseau USB (nombreux garde-fous) |
 | `rootfs/` | Configuration copiée sur la carte : gadget USB NCM et surveillance de la connexion, `systemd-networkd` (172.16.42.1), `fstab`, nom d'hôte |
 | `docs/etat-des-lieux.md` | Ce qui fonctionne déjà, ce qui manque, sources |
 | `docs/noyau-pmos-7.1.md` | Analyse du noyau pmOS 7.1 et de son DTB (décompilé dans `docs/dts/`) |
