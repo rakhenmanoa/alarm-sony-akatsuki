@@ -38,12 +38,12 @@ else
 	echo /usr/local/lib > /etc/ld.so.conf.d/usr-local.conf
 
 	echo "== qrtr"
-	(cd "$src/qrtr" && rm -rf build && meson setup -q build --prefix=/usr/local && ninja -C build && ninja -C build install)
+	(cd "$src/qrtr" && rm -rf build && meson setup build --prefix=/usr/local && ninja -C build && ninja -C build install)
 	ldconfig
 
 	echo "== rmtfs"
 	if [ -f "$src/rmtfs/meson.build" ]; then
-		(cd "$src/rmtfs" && rm -rf build && meson setup -q build --prefix=/usr/local && ninja -C build && ninja -C build install)
+		(cd "$src/rmtfs" && rm -rf build && meson setup build --prefix=/usr/local && ninja -C build && ninja -C build install)
 	else
 		make -C "$src/rmtfs" clean >/dev/null 2>&1 || true
 		make -C "$src/rmtfs" CFLAGS="-Wall -O2 -I/usr/local/include" LDFLAGS="-L/usr/local/lib -lqrtr -ludev -lpthread"
@@ -51,7 +51,7 @@ else
 	fi
 
 	echo "== tqftpserv"
-	(cd "$src/tqftpserv" && rm -rf build && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig meson setup -q build --prefix=/usr/local && ninja -C build && ninja -C build install)
+	(cd "$src/tqftpserv" && rm -rf build && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig meson setup build --prefix=/usr/local && ninja -C build && ninja -C build install)
 	ldconfig
 fi
 
