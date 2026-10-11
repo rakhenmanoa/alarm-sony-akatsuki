@@ -20,3 +20,4 @@ modemst*
 *.ta
 # Firmwares extraits du téléphone (signés Qualcomm/Sony) : jamais dans le dépôt
 firmware-akatsuki/
+__pycache__/
