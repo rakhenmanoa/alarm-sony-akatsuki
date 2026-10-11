@@ -1,4 +1,4 @@
-# Écran (en cours, 11/10/2026)
+# Écran — ✅ fonctionne (11/10/2026)
 
 L'écran du XZ3 est un panneau **LG LH599QH3-EDB1** (1440 × 2880, 60 Hz, compression
 **DSC 1.1** obligatoire), avec le tactile Atmel maXTouch. Le bootloader Sony éteint
@@ -44,3 +44,22 @@ ls /dev/dri /sys/class/drm
 
 Si rien ne s'affiche : essayer la polarité inverse du reset (GPIO 6 active haute,
 comme l'exemple de la liaison DT).
+
+### ✅ Résultat du premier essai (11/10/2026, 21 h 55)
+
+`insmod panel-lgd-lh599qh3-edb1.ko` → `msm_dpu … bound ae94000.dsi`,
+`[drm] Initialized msm 1.13.0`, `fb0: msmdrmfb frame buffer device`, sortie
+`card0-DSI-1` : **l'écran s'allume et affiche la console texte**. Premier affichage
+du XZ3 sous un noyau mainline sans patch du noyau (pilote en module).
+
+Reste : GPU (`a630_zap.mbn` à installer et tester), tactile (Atmel maXTouch),
+ligne `DSI PLL(0) lock failed` au démarrage (avant le chargement du panneau, sans
+effet visible).
+
+Chargement automatique au démarrage :
+
+```sh
+M=/usr/lib/modules/$(uname -r)
+install -D -m 644 /root/panel-lgd-lh599qh3-edb1.ko $M/updates/panel-lgd-lh599qh3-edb1.ko
+depmod -a
+```
