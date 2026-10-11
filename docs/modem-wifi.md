@@ -199,3 +199,36 @@ ath10k prenait les réglages génériques de `linux-firmware`. Sony fournit les 
 les range dans un `board-2.bin` (noms `bus=snoc,qmi-board-id=ff[,qmi-chip-id=30214]`),
 installé dans `/usr/lib/firmware/updates/ath10k/WCN3990/hw1.0/` pour passer avant
 celui de `linux-firmware`. `extraire-firmwares-adb.sh` le fabrique automatiquement.
+
+### Wi-Fi : la vraie cause, la commande « quiet mode » (11/10/2026)
+
+Avec le mode bavard d'ath10k (`debug_mask=0x00200022`), les réglages Sony sont bien
+envoyés (`boot found board data … qmi bdf download request completed`), puis :
+
+```
+wmi tlv quiet param: period 100 duration 0 enabled 0
+wmi tlv vdev create
+fatal error received: err_qdi.c:456:EX:wlan_process:1:WLAN RT:108b:PC=b001ba04
+```
+
+C'est le bug décrit par le patch « ath10k: skip quiet mode for WCN3990 to prevent
+firmware crash » (Malte Schababerle, liste ath10k, 22/03/2026) : le firmware annonce
+le service THERM_THROT, ath10k lui envoie « quiet mode », il plante ~17 ms après la
+création de l'interface et entraîne le modem. Le firmware Sony WLAN.HL.2.0.c12 fait
+de même. Le patch n'est pas dans le noyau pmOS 7.1-rc1.
+
+Correctif sans recompiler le noyau : [`scripts/ath10k-sans-quiet.py`](../scripts/ath10k-sans-quiet.py)
+fait rendre la main immédiatement à `ath10k_thermal_set_throttling()` dans une copie
+du module (vérification des octets avant modification, signature retirée), installée
+dans `/usr/lib/modules/<version>/updates/` (prioritaire pour `depmod`) :
+
+```sh
+M=/usr/lib/modules/$(uname -r)
+zstd -dc $M/kernel/drivers/net/wireless/ath/ath10k/ath10k_core.ko.zst > /tmp/ath10k_core.ko
+python3 ath10k-sans-quiet.py /tmp/ath10k_core.ko /tmp/ath10k_core.sans-quiet.ko
+install -D -m 644 /tmp/ath10k_core.sans-quiet.ko $M/updates/ath10k_core.ko
+depmod -a && modinfo -n ath10k_core      # → …/updates/ath10k_core.ko
+reboot
+```
+
+Retour arrière : `rm $M/updates/ath10k_core.ko && depmod -a && reboot`.
