@@ -62,6 +62,8 @@ Le correctif Sony existe dans le noyau d'origine (commit `cfd1489` du noyau Sail
 | `test-boot/` | **boot.img** : noyau pmOS + DTB + initramfs maison (monte la carte SD et lance Arch ; sinon mode secours USB + journal sur http://172.16.42.1/) |
 | `docs/premier-demarrage-resultats.md` | **Résultats du premier démarrage réel** : ce qui marche, ce qui manque, pièges du bootloader |
 | `docs/arch-premiers-pas.md` | Arch démarré : connexion, internet par USB, mises à jour, firmwares manquants |
+| `scripts/extraire-firmwares-adb.sh` | Récupère les firmwares Sony dans le téléphone (LineageOS, lecture seule), les convertit et les dépose sur la carte SD |
+| `scripts/pil-squasher.py` | Recolle un firmware Qualcomm découpé (`.mdt` + `.bNN`) en un `.mbn` pour le noyau mainline |
 | `scripts/partage-internet-pc.sh` | Sur le PC : partage la connexion internet avec le téléphone par le câble USB |
 | `docs/premier-demarrage.md` | **Installer Arch sur la carte SD pas à pas** : carte SD, boot.img, slot B, SSH par USB |
 | `docs/etape1-ecran-charge.md` | Étape 1 : écran + charge, procédure de test et ce qu'il faut observer |

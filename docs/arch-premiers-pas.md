@@ -72,18 +72,44 @@ pacman -S linux-firmware-qcom wireless-regdb
 qui utilise le noyau pmOS du `boot.img` (slot B). Les modules du noyau pmOS sont dans
 `/usr/lib/modules/7.1.0-rc1-sdm845` et ne sont pas touchés.
 
-## Firmwares propres au téléphone (à faire ensuite)
+## Firmwares propres au téléphone
 
-Absents au premier démarrage, ils sont signés par Sony et ne sont pas dans
-`linux-firmware` :
+Signés par Qualcomm/Sony pour ce modèle, absents de `linux-firmware`, mais **déjà
+présents dans le téléphone** (partitions `modem`, `bluetooth`, `vendor` de LineageOS).
+Android les range découpés (`.mdt` + `.b00`, `.b01`…) ; le noyau mainline attend un
+fichier `.mbn` d'un seul tenant : [`scripts/pil-squasher.py`](../scripts/pil-squasher.py)
+les recolle (même principe que l'outil `pil-squasher` de Linaro).
 
-| Fichier attendu | Rôle |
-|---|---|
-| `qcom/sdm845/Sony/tama/adsp.mbn` | processeur audio (son, capteurs) |
-| `qcom/sdm845/Sony/tama/cdsp.mbn` | processeur de calcul |
-| `qcom/sdm845/Sony/tama/venus.mbn` | décodage vidéo |
-| `qcom/sdm845/Sony/tama/modem.mbn`, `mba.mbn` | modem (et Wi-Fi via le modem) |
-| `qcom/sdm845/Sony/tama/a630_zap.mbn` | GPU |
+**1. Sous LineageOS** (« Débogage root » activé), sur le PC depuis le dépôt :
 
-Sources possibles : les partitions du téléphone lui-même (`modem_a`, `vendor`, lues depuis
-LineageOS), ou le dépôt de firmwares de Petr Hodina.
+```sh
+scripts/extraire-firmwares-adb.sh
+```
+
+Lecture seule côté téléphone. Résultat dans `firmware-akatsuki/` sur le PC (ignoré par
+git : ces fichiers ne doivent pas être publiés) et copie sur la partition d'échange de
+la carte SD.
+
+**2. Sous Arch** (root) :
+
+```sh
+cp -a /mnt/partage/firmware-akatsuki/. /usr/lib/firmware/
+reboot
+```
+
+| Fichier | Rôle | Utilisé par le DTB actuel |
+|---|---|---|
+| `qcom/sdm845/Sony/tama/adsp.mbn` | processeur audio et capteurs | oui |
+| `qcom/sdm845/Sony/tama/cdsp.mbn` | processeur de calcul | oui |
+| `qcom/sdm845/Sony/tama/venus.mbn` | vidéo | oui |
+| `qcom/sdm845/Sony/tama/a630_zap.mbn` | GPU | oui |
+| `qca/Sony/tama/crnv21.bin` | réglages Bluetooth | oui |
+| `mba.mbn`, `modem.mbn`, `wlanmdsp.mbn` | modem, Wi-Fi | pas encore (modem à activer) |
+| `slpi.mbn`, `ipa_fws.mbn` | capteurs, réseau du modem | pas encore |
+
+Après redémarrage, vérifier :
+
+```sh
+cat /sys/class/remoteproc/*/name /sys/class/remoteproc/*/state
+dmesg | grep -iE 'remoteproc|venus|zap|bluetooth|firmware'
+```
