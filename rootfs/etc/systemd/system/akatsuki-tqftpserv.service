@@ -1,0 +1,14 @@
+# Serveur TFTP du modem : lui fournit wlanmdsp.mbn (firmware Wi-Fi) et garde ses
+# fichiers en écriture dans /var/lib/tqftpserv.
+[Unit]
+Description=Serveur TFTP du modem (tqftpserv)
+After=systemd-modules-load.service
+Before=akatsuki-modem.service
+
+[Service]
+ExecStart=/usr/local/bin/tqftpserv
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

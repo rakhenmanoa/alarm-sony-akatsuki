@@ -1,0 +1,21 @@
+# Modem (et donc Wi-Fi) du Xperia XZ3 : rmtfs sert au modem sa copie de l'EFS
+# (/var/lib/rmtfs, sur la carte SD) et le démarre (-s) ; l'arrêt du service
+# arrête le modem. Le noyau ne démarre jamais le modem tout seul.
+[Unit]
+Description=Modem du Xperia XZ3 (rmtfs)
+Requires=akatsuki-qmi-sony.service akatsuki-tqftpserv.service
+After=akatsuki-qmi-sony.service akatsuki-tqftpserv.service
+ConditionPathExists=/var/lib/rmtfs/modem_fs1
+ConditionPathExists=/usr/lib/firmware/qcom/sdm845/Sony/tama/modem.mbn
+
+[Service]
+# IPA : normalement liée au démarrage ; sinon, on la lie ici (erreur ignorée).
+ExecStartPre=-/bin/sh -c '[ -e /sys/bus/platform/drivers/ipa/1e40000.ipa ] || echo 1e40000.ipa > /sys/bus/platform/drivers/ipa/bind'
+# Laisse aux services Sony le temps de s'annoncer sur le bus QRTR.
+ExecStartPre=/bin/sleep 2
+ExecStart=/usr/local/bin/rmtfs -o /var/lib/rmtfs -s
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

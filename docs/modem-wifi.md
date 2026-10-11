@@ -263,3 +263,26 @@ second lancement pendant que le Wi-Fi tourne a laissé ath10k dans un état banc
 Connexion (iwd, `EnableNetworkConfiguration=true`) : connecté en WPA2 sur un réseau
 5 GHz (canal 36, −41 dBm), adresse obtenue par DHCP, `ping -I wlan0 archlinuxarm.org`
 sans perte. **Le XZ3 sous Arch a internet par le Wi-Fi.**
+
+## Démarrage automatique
+
+[`scripts/installer-demarrage-auto.sh`](../scripts/installer-demarrage-auto.sh), à lancer
+sur le téléphone (root) depuis une copie du dépôt (`git clone` par le Wi-Fi) :
+
+```sh
+git clone https://github.com/rakhenmanoa/alarm-sony-akatsuki.git /root/alarm-sony-akatsuki
+sh /root/alarm-sony-akatsuki/scripts/installer-demarrage-auto.sh
+reboot
+```
+
+Il installe les firmwares validés dans `/usr/lib/firmware` (pas Venus, SLPI ni
+`a630_zap`), le module `ath10k_core` corrigé, et active trois services :
+
+| Service | Rôle |
+|---|---|
+| `akatsuki-qmi-sony` | services QMI Sony (`qmi-ecoute.py`) ; journal du modem : `journalctl -u akatsuki-qmi-sony` |
+| `akatsuki-tqftpserv` | fichiers du modem (`wlanmdsp.mbn`) |
+| `akatsuki-modem` | `rmtfs -s` : démarre le modem (et donc le Wi-Fi) |
+
+plus `iwd` (`EnableNetworkConfiguration=true`). La route par le câble USB passe en
+priorité basse (`Metric=2048`) pour que le Wi-Fi soit la route par défaut.

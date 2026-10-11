@@ -16,6 +16,8 @@ DNS=9.9.9.9
 Gateway=172.16.42.2
 # Si le PC ne partage pas sa connexion, cette route est simplement inutile.
 GatewayOnLink=yes
+# Priorité basse : le Wi-Fi (iwd, métrique ~300) passe avant le câble USB.
+Metric=2048
 
 [DHCPServer]
 PoolOffset=2
