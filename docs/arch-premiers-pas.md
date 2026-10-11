@@ -165,3 +165,17 @@ cp /root/fw-essai/qcom/sdm845/Sony/tama/adsp.mbn /root/fw-essai/qcom/sdm845/Sony
 
 **Ne pas** mettre `venus.mbn` dans `/usr/lib/firmware` : le pilote le chargerait à
 chaque démarrage et le téléphone redémarrerait en boucle.
+
+## Batterie (11/10/2026)
+
+Avec la jauge activée dans le DTB (`fuel-gauge@4000`), `/sys/class/power_supply/`
+contient `pmi8998-charger` et `qcom-battery` :
+
+```sh
+cat /sys/class/power_supply/qcom-battery/capacity      # pourcentage
+cat /sys/class/power_supply/qcom-battery/voltage_now   # µV
+cat /sys/class/power_supply/qcom-battery/temp          # dixièmes de °C
+```
+
+Premier relevé : 99 %, 4,252 V, −2,4 mA (fin de charge), 32 °C ; chargeur en USB
+standard (SDP, 500 mA max), santé « Good ».

@@ -69,8 +69,12 @@
  * pourcentage, de tension ni de courant de la batterie). Constat du 11/10/2026 :
  * /sys/class/power_supply ne contenait que pmi8998-charger. Lecture de mesures
  * uniquement ; mêmes caractéristiques de batterie que le chargeur.
+ * Validé le 11/10/2026 : qcom-battery, 99 %, 4,25 V, 32 °C.
  */
 &{/soc@0/spmi@c440000/pmic@2/fuel-gauge@4000} {
 	monitored-battery = <&akatsuki_battery>;
+	/* lien vers le chargeur : sans lui, « Failed to get charger supply: -2 »
+	 * (constaté le 11/10/2026, sans conséquence sur les mesures) */
+	power-supplies = <&{/soc@0/spmi@c440000/pmic@2/charger@1000}>;
 	status = "okay";
 };
