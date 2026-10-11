@@ -116,7 +116,9 @@ Résultats :
 | démarrage avec `boot-arch-modem.img` | ✅ démarrage normal, modem vu (`remoteproc1: 4080000.remoteproc is available`), arrêté |
 | modem (`rmtfs -s`) | ⚠️ `now up`, EFS lu (fs1, fs2, fsg, fsc ; `fsg_oem_1/2` refusés), zone `0xfdc01000` acceptée ; puis `fatal error without message` **40 s après chaque démarrage**, en boucle. Seuls les services de base du modem (66, 43) apparaissent dans `qrtr-lookup` |
 | IPA (`boot-arch-ipa.img`) | ✅ `IPA driver setup completed successfully`, reçoit les événements du modem ; **mais le modem plante toujours 40 s après son démarrage** : ce n'était pas la cause. `tqftpserv` ne reçoit aucune demande. `tqftpserv -d` : aucune demande. Sous LineageOS, le modem lit l'EFS puis, 0,2 s après, demande `readwrite/ota_firewall/ruleset` et `wlanmdsp.mbn` en TFTP, et le Wi-Fi démarre 1 s plus tard ; sous Arch, il s'arrête entre la lecture de l'EFS et le TFTP. `fsg_oem_1/2` n'existent pas dans le téléphone (refusés aussi sous LineageOS). Adresses mémoire identiques à LineageOS. Vidage mémoire du modem (devcoredump) : vide (zéros, mémoire protégée par TrustZone). **Piste actuelle** : LineageOS fait tourner des services QMI propres à Sony, absents de Linux — `ta_qmi_service` (« TA QMI service » et « MiscTA QMI service » : données de la partition TA servies au modem), `mlog_qmi_service`, `tad` ; le modem les attendrait après la lecture de l'EFS |
-| Wi-Fi (`wlan0`, scan, connexion) | pas encore (le service Wi-Fi du modem n'apparaît pas) |
+| Services Sony (`qmi-ecoute.py`) | ✅ **modem complètement démarré, plus de plantage** : une trentaine de services sur le nœud 0 (voix 9, réseau 3, SMS 5, SIM 11, données 1, Wi-Fi 69…) |
+| Wi-Fi | ✅ `ath10k_snoc` : firmware WLAN.HL.2.0.c12, `wcn3990 hw1.0` ; interface `wlan0` (adresse MAC aléatoire : la vraie est sans doute dans la partition TA) ; scan et connexion à tester |
+| Données mobiles | interface `rmnet_ipa0` présente ; à tester |
 
 ## 4 bis. Essai avec l'IPA (`boot-arch-ipa.img`)
 
