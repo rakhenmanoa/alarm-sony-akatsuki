@@ -149,3 +149,29 @@ sur le nœud 0 (dont 69, le Wi-Fi).
 Si tout fonctionne, il restera à rendre l'ensemble automatique (firmwares dans
 `/usr/lib/firmware`, services `tqftpserv` et `rmtfs` activés au démarrage). Les données
 mobiles (IPA) et les appels/SMS (ModemManager) viendront ensuite.
+
+## Services QMI de LineageOS (relevé du 11/10/2026)
+
+`/sys/kernel/debug/msm_ipc_router/dump_servers` sous LineageOS (champ « Instance » =
+instance << 8 | version). Services annoncés côté Android (nœud 1) :
+
+| Service | Programme | Équivalent sous Arch |
+|---|---|---|
+| 14 | `rmt_storage` | `rmtfs` ✅ |
+| 64 | `pd-mapper` | noyau (`qcom_pd_mapper`) ✅ |
+| 4096 (TFTP), versions 1 à 10 | `tftp_server` | `tqftpserv` (version 1 seulement) |
+| 49 (IPA) | noyau | noyau (`ipa`) ✅ |
+| **227 (0xe3)** | `ta_qmi_service` (TA) | ❌ |
+| **228 (0xe4)** | `ta_qmi_service` (MiscTA) | ❌ |
+| **229 (0xe5)** | `sct_service` | ❌ |
+| **230 (0xe6)** | `mlog_qmi_service` | ❌ |
+| 28 (RFSA), 52 (memshare), 53, 1053 | noyau / `pm-service` | ❌ |
+| 770 | `imsdatadaemon` | ❌ (appels VoLTE, plus tard) |
+
+[`scripts/qmi-ecoute.py`](../scripts/qmi-ecoute.py) annonce les services Sony 227 à 230
+et affiche ce que le modem leur demande :
+
+```sh
+python3 qmi-ecoute.py | tee /root/qmi-ecoute.log      # session 3, AVANT rmtfs
+```
+
