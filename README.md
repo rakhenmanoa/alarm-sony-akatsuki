@@ -47,6 +47,7 @@ Le correctif Sony existe dans le noyau d'origine (commit `cfd1489` du noyau Sail
 | `arch/linux-sony-akatsuki-pmos/` | PKGBUILD Arch : noyau 7.1 de postmarketOS reconditionné (refuse de se construire si l'UFS est actif) |
 | `scripts/fetch-pmos-kernel.sh` | Trouve et télécharge la version actuelle du noyau pmOS, met à jour le PKGBUILD |
 | `dts/akatsuki-reboot-mode.dtsi` | Raison de redémarrage au format Sony (IMEM) — sans effet constaté pour l'instant |
+| `dts/akatsuki-memoire-sony.dtsi` | Zones de RAM protégées par TrustZone chez Sony (rmtfs `0xfdc01000`, debug `0xffb00000`) : évite les redémarrages au démarrage des coprocesseurs |
 | `dts/akatsuki-ecran-charge.dtsi` | Étape 1 (source) : écran (simple-framebuffer) et charge, fragment à appliquer au DTB pmOS |
 | `scripts/build-dtb.sh` | Construit le DTB modifié avec `dtc` (base pmOS + fragments de `dts/`), garde-fou UFS entrée et sortie |
 | `scripts/patch-dtb-akatsuki.py` | Secours sans `dtc` : même résultat que `build-dtb.sh` (vérifié identique), en Python seul |

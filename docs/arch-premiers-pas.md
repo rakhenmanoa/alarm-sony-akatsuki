@@ -113,3 +113,37 @@ Après redémarrage, vérifier :
 cat /sys/class/remoteproc/*/name /sys/class/remoteproc/*/state
 dmesg | grep -iE 'remoteproc|venus|zap|bluetooth|firmware'
 ```
+
+### ⚠️ Redémarrage en boucle avec les firmwares (11/10/2026)
+
+Premier essai : après la copie des firmwares dans `/usr/lib/firmware`, le téléphone
+redémarre environ 2 s après le début du chargement des pilotes, sans message.
+Cause probable : les réserves CMA et « fastrpc » du DTB pmOS recouvrent deux zones de
+RAM protégées par TrustZone sur Sony Tama (rmtfs à `0xfdc01000`, debug à
+`0xffb00000`) ; corrigé par [`dts/akatsuki-memoire-sony.dtsi`](../dts/akatsuki-memoire-sony.dtsi)
+(boot.img reconstruit). À confirmer sur le téléphone.
+
+**Sortir de la boucle** (LineageOS, `adb root`) : monter la partition d'Arch et mettre
+les firmwares hors du chemin de recherche du noyau :
+
+```sh
+adb shell "mkdir -p /data/local/tmp/arch && mount -t ext4 /dev/block/mmcblk0p1 /data/local/tmp/arch"
+adb shell "mv /data/local/tmp/arch/usr/lib/firmware/qcom/sdm845/Sony /data/local/tmp/arch/root/firmwares-sony-desactives"
+adb shell "umount /data/local/tmp/arch"
+```
+
+**Essayer sans risque de boucle** : laisser les firmwares hors de `/usr/lib/firmware`
+et ne les rendre visibles au noyau que pour la session en cours
+(`/sys/module/firmware_class/parameters/path`, effacé au redémarrage). Si un
+coprocesseur fait planter le téléphone, il redémarre normalement.
+
+```sh
+mkdir -p /root/fw-essai/qcom/sdm845
+mv /root/firmwares-sony-desactives /root/fw-essai/qcom/sdm845/Sony
+echo -n /root/fw-essai > /sys/module/firmware_class/parameters/path
+# dans une 2e session SSH : dmesg -w
+grep . /sys/class/remoteproc/*/name          # repérer adsp, cdsp…
+echo start > /sys/class/remoteproc/remoteprocN/state
+```
+
+Quand tout est validé : `cp -a /root/fw-essai/. /usr/lib/firmware/`.

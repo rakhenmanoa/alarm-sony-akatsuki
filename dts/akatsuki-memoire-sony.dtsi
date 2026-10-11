@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Zones de RAM protégées par TrustZone sur Sony Tama (repris du DTS de Petr Hodina,
+ * 2023), absentes du DTB postmarketOS 7.1_rc1-r4.
+ *
+ * Constat du 11/10/2026 : après l'installation des firmwares Sony (adsp, cdsp,
+ * venus…), le téléphone redémarre en boucle environ 2 s après le début du chargement
+ * des pilotes, sans aucun message. Le journal de démarrage montre que la réserve CMA
+ * (« Reserved 256 MiB at 0xeec00000 » → 0xeec00000-0xfebfffff) et la réserve
+ * « fastrpc » (0xfec00000-0xffbfffff) recouvrent les deux zones ci-dessous. Si le
+ * noyau y place un tampon (par exemple pour passer un firmware à TrustZone), XPU
+ * déclenche une violation : redémarrage de la puce.
+ *
+ *   - rmtfs (mémoire partagée avec le modem) : Sony la place à 0xfdc01000 et non à
+ *     0x88f00000 comme le DTB générique ; on la déplace et on l'entoure de deux pages
+ *     de garde (« XPU limitations », commentaire de Hodina).
+ *   - debug_mem à 0xffb00000 : mémoire de débogage du bootloader Sony.
+ *
+ * Effet de bord voulu : CMA et « fastrpc » sont placées ailleurs, hors de ces zones.
+ */
+
+/delete-node/ &{/reserved-memory/rmtfs@88f00000};
+
+&{/reserved-memory} {
+	rmtfs-lower-guard@fdc00000 {
+		reg = <0x0 0xfdc00000 0x0 0x1000>;
+		no-map;
+	};
+
+	rmtfs-mem@fdc01000 {
+		compatible = "qcom,rmtfs-mem";
+		reg = <0x0 0xfdc01000 0x0 0x200000>;
+		no-map;
+		qcom,client-id = <1>;
+		qcom,vmid = <15>;
+	};
+
+	rmtfs-upper-guard@fde01000 {
+		reg = <0x0 0xfde01000 0x0 0x1000>;
+		no-map;
+	};
+
+	debug-mem@ffb00000 {
+		reg = <0x0 0xffb00000 0x0 0x100000>;
+		no-map;
+	};
+};
