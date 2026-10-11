@@ -33,7 +33,7 @@ Après le démarrage, rien ne doit changer ; un nouveau coprocesseur apparaît, 
 
 ```sh
 grep . /sys/class/remoteproc/*/name /sys/class/remoteproc/*/state
-# …/remoteproc2/name:4080000.remoteproc   …/remoteproc2/state:offline   (numéro variable)
+# …/remoteprocN/name:4080000.remoteproc   …/remoteprocN/state:offline   (numéro variable : remoteproc1 le 11/10/2026)
 ```
 
 ## 2. Copier l'EFS (sous LineageOS)
@@ -80,8 +80,8 @@ rmtfs -o /var/lib/rmtfs -s -v
 Ce qu'on espère voir dans `dmesg` :
 
 ```
-remoteproc remoteproc2: powering up 4080000.remoteproc
-remoteproc remoteproc2: remote processor 4080000.remoteproc is now up
+remoteproc remoteprocN: powering up 4080000.remoteproc
+remoteproc remoteprocN: remote processor 4080000.remoteproc is now up
 ath10k_snoc 18800000.wifi: qmi chip_id … board_id … soc_id …
 ath10k_snoc 18800000.wifi: wcn3990 hw1.0 target 0x00000008 …
 ```
@@ -113,7 +113,7 @@ Résultats :
 
 | Étape | Résultat |
 |---|---|
-| démarrage avec `boot-arch-modem.img` | à tester |
+| démarrage avec `boot-arch-modem.img` | ✅ démarrage normal, modem vu (`remoteproc1: 4080000.remoteproc is available`), arrêté |
 | modem (`rmtfs -s`) | à tester |
 | Wi-Fi (`wlan0`, scan, connexion) | à tester |
 
