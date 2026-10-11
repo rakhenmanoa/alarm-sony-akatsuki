@@ -11,6 +11,7 @@
 # Résultat :
 #   <sortie>/qcom/sdm845/Sony/tama/*.mbn    (adsp, cdsp, venus, a630_zap, modem…)
 #   <sortie>/qca/Sony/tama/crnv21.bin       (réglages Bluetooth)
+#   <sortie>/updates/ath10k/WCN3990/hw1.0/board-2.bin   (réglages Wi-Fi Sony)
 #   et une copie dans firmware-akatsuki/ sur la partition d'échange de la carte SD.
 # Ensuite, sous Arch (root) :
 #   cp -a /mnt/partage/firmware-akatsuki/. /usr/lib/firmware/ && reboot
@@ -100,6 +101,15 @@ fi
 if pull_all crnv21; then
 	cp "$work/crnv21.bin" "$out/qca/Sony/tama/crnv21.bin" && echo "   → qca/Sony/tama/crnv21.bin"
 fi
+# Wi-Fi : réglages de carte Sony (antennes, puissances) → board-2.bin pour ath10k.
+# Rangé sous updates/ : le noyau le préfère à celui de linux-firmware (réglages
+# génériques, avec lesquels le firmware Wi-Fi plante, constaté le 11/10/2026).
+for bd in /vendor/etc/wifi/bdwlan.bin /vendor/firmware/wlan/qca_cld/bdwlan.bin /vendor/firmware_mnt/image/bdwlan.bin; do
+	adb pull "$bd" "$work/bdwlan.bin" >/dev/null 2>&1 || continue
+	python3 -I "$here/ath10k-board2.py" "$out/updates/ath10k/WCN3990/hw1.0/board-2.bin" "$work/bdwlan.bin" >/dev/null && \
+		echo "   bdwlan.bin ← $bd" && echo "   → updates/ath10k/WCN3990/hw1.0/board-2.bin"
+	break
+done
 
 n="$(find "$out" -type f | wc -l)"
 [ "$n" -gt 0 ] || die "aucun firmware récupéré."

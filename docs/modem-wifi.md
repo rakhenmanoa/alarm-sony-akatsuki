@@ -189,3 +189,13 @@ démarrage : il interroge **MiscTA (228)** et envoie son **journal (mlog, 230)**
   `MMGSDI_PIN1_EVT`, `SIM Lock response message not supported(status=1)`.
 
 Prochaine étape : un vrai service MiscTA qui lit une copie de la partition TA.
+
+### Wi-Fi : le firmware plante à la création de l'interface (11/10/2026)
+
+`ip link set wlan0 up` → `wmi command 20481 timeout`, `failed to create WMI vdev 0`,
+`firmware crashed!`. La puce ne donne pas d'identifiant de carte (`board_id 0xff`) :
+ath10k prenait les réglages génériques de `linux-firmware`. Sony fournit les siens dans
+`/vendor/etc/wifi/bdwlan.bin` (19 152 octets). [`scripts/ath10k-board2.py`](../scripts/ath10k-board2.py)
+les range dans un `board-2.bin` (noms `bus=snoc,qmi-board-id=ff[,qmi-chip-id=30214]`),
+installé dans `/usr/lib/firmware/updates/ath10k/WCN3990/hw1.0/` pour passer avant
+celui de `linux-firmware`. `extraire-firmwares-adb.sh` le fabrique automatiquement.
