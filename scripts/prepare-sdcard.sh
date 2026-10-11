@@ -172,6 +172,12 @@ done
 
 mkdir -p "$mnt/mnt/partage"
 
+# pacman 7 télécharge dans un bac à sable qui exige Landlock ; le noyau pmOS est
+# compilé sans (CONFIG_SECURITY_LANDLOCK non défini) : « failed to synchronize ».
+if [ -f "$mnt/etc/pacman.conf" ] && ! grep -q '^DisableSandbox' "$mnt/etc/pacman.conf"; then
+	sed -i '/^\[options\]/a DisableSandbox' "$mnt/etc/pacman.conf"
+fi
+
 if [ "$nparts" -eq 2 ]; then
 	echo "== Partition d'échange (avertissement lisible depuis Android)"
 	fatmnt="$(mktemp -d)"

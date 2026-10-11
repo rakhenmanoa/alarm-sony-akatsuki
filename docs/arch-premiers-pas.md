@@ -55,7 +55,13 @@ timedatectl set-ntp true               # mettre l'horloge à l'heure
 
 ## Mettre à jour et ajouter les firmwares génériques
 
+Le noyau pmOS est compilé sans Landlock, que le bac à sable de téléchargement de
+pacman 7 exige (« Landlock is not supported by the kernel », « failed to synchronize
+all databases ») : désactiver ce bac à sable (déjà fait sur les cartes préparées après
+le 11/10/2026). Les signatures des paquets restent vérifiées.
+
 ```sh
+grep -q '^DisableSandbox' /etc/pacman.conf || sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
 pacman-key --init && pacman-key --populate archlinuxarm
 pacman -Syu
 pacman -S linux-firmware-qcom wireless-regdb

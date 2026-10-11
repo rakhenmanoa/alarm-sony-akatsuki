@@ -246,6 +246,17 @@ done
 
 ash mkdir -p "$MNT/mnt/partage"
 
+# pacman 7 télécharge dans un bac à sable qui exige Landlock ; le noyau pmOS est
+# compilé sans : on le désactive (modifié sur le PC, sed de toybox étant limité).
+if adb pull "$MNT/etc/pacman.conf" "$work/pacman.conf" >/dev/null 2>&1; then
+	if ! grep -q '^DisableSandbox' "$work/pacman.conf"; then
+		sed -i '/^\[options\]/a DisableSandbox' "$work/pacman.conf"
+		adb push "$work/pacman.conf" "$MNT/etc/pacman.conf" >/dev/null
+		ash chown 0:0 "$MNT/etc/pacman.conf"
+		ash chmod 644 "$MNT/etc/pacman.conf"
+	fi
+fi
+
 ash sync
 ash umount "$MNT"
 ash rmdir "$MNT" 2>/dev/null || true
