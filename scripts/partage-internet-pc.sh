@@ -31,11 +31,11 @@ start)
 		nft delete table ip akatsuki 2>/dev/null || true
 		nft -f - <<EOF
 table ip akatsuki {
-	chain post {
+	chain akatsuki_nat {
 		type nat hook postrouting priority srcnat; policy accept;
 		ip saddr $NET oifname != "$iface" masquerade
 	}
-	chain fwd {
+	chain akatsuki_transfert {
 		type filter hook forward priority filter - 1; policy accept;
 		iifname "$iface" accept
 		oifname "$iface" ct state established,related accept
