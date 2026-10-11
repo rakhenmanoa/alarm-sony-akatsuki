@@ -101,7 +101,7 @@ reboot
 |---|---|---|
 | `qcom/sdm845/Sony/tama/adsp.mbn` | processeur audio et capteurs | oui |
 | `qcom/sdm845/Sony/tama/cdsp.mbn` | processeur de calcul | oui |
-| `qcom/sdm845/Sony/tama/venus.mbn` | vidéo | oui |
+| `qcom/sdm845/Sony/tama/venus.mbn` | vidéo | oui — ⚠️ fait redémarrer le téléphone, ne pas installer |
 | `qcom/sdm845/Sony/tama/a630_zap.mbn` | GPU | oui |
 | `qca/Sony/tama/crnv21.bin` | réglages Bluetooth | oui |
 | `mba.mbn`, `modem.mbn`, `wlanmdsp.mbn` | modem, Wi-Fi | pas encore (modem à activer) |
@@ -146,4 +146,22 @@ grep . /sys/class/remoteproc/*/name          # repérer adsp, cdsp…
 echo start > /sys/class/remoteproc/remoteprocN/state
 ```
 
-Quand tout est validé : `cp -a /root/fw-essai/. /usr/lib/firmware/`.
+**Résultats du 11/10/2026** (DTB avec `akatsuki-memoire-sony.dtsi`) :
+
+| Coprocesseur | Démarrage manuel | Remarque |
+|---|---|---|
+| ADSP (`remoteproc0`) | ✅ `remote processor adsp is now up` | services audio APR présents ; carte son pas encore décrite dans le DTB (`No dais found in DT`) |
+| CDSP (`remoteproc1`) | ✅ `remote processor cdsp is now up` | 8 canaux de calcul fastrpc |
+| Venus (vidéo) | ❌ redémarrage instantané | aucune trace (pas même la ligne `non legacy binding` dans le journal persistant) : coupure par TrustZone ou blocage matériel, cause à chercher |
+| GPU (`a630_zap.mbn`) | pas encore testé | |
+
+N'installer pour de bon que ce qui est validé :
+
+```sh
+mkdir -p /usr/lib/firmware/qcom/sdm845/Sony/tama
+cp /root/fw-essai/qcom/sdm845/Sony/tama/adsp.mbn /root/fw-essai/qcom/sdm845/Sony/tama/cdsp.mbn \
+   /usr/lib/firmware/qcom/sdm845/Sony/tama/
+```
+
+**Ne pas** mettre `venus.mbn` dans `/usr/lib/firmware` : le pilote le chargerait à
+chaque démarrage et le téléphone redémarrerait en boucle.
