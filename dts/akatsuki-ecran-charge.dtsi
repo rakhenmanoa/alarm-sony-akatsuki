@@ -62,3 +62,15 @@
 	monitored-battery = <&akatsuki_battery>;
 	status = "okay";
 };
+
+/*
+ * Jauge de batterie du PMI8998 (pilote pmi8998_fg, module du noyau pmOS 7.1).
+ * Désactivée dans le DTB pmOS ; sans elle, seul le chargeur est visible (pas de
+ * pourcentage, de tension ni de courant de la batterie). Constat du 11/10/2026 :
+ * /sys/class/power_supply ne contenait que pmi8998-charger. Lecture de mesures
+ * uniquement ; mêmes caractéristiques de batterie que le chargeur.
+ */
+&{/soc@0/spmi@c440000/pmic@2/fuel-gauge@4000} {
+	monitored-battery = <&akatsuki_battery>;
+	status = "okay";
+};
