@@ -247,3 +247,15 @@ correctif avec le noyau pmOS d'origine.**
 boot.img correspondant (`boot-arch-wifi.img`). Vérifié sous QEMU : même démarrage,
 sans la ligne `Kernel is locked down from Kernel configuration`. Le module
 `ath10k_core` corrigé peut alors être chargé (non signé, noyau marqué « tainted »).
+
+### ✅ Wi-Fi fonctionnel (11/10/2026, 21 h)
+
+Avec `boot-arch-wifi.img` (noyau sans verrouillage) + `ath10k_core` corrigé (sans
+« quiet mode ») + réglages Sony (`board-2.bin`) + services Sony (`qmi-ecoute.py`),
+après `akatsuki-modem-essai.sh start` sur un système fraîchement démarré :
+`ip link set wlan0 up` puis `iw dev wlan0 scan` liste les réseaux en 2,4 GHz et en
+5 GHz (signal de −32 à −84 dBm).
+
+Remarque : lancer `akatsuki-modem-essai.sh start` une seule fois par démarrage ; un
+second lancement pendant que le Wi-Fi tourne a laissé ath10k dans un état bancal
+(`failed to unmap msa permissions`, `could not probe fw`). Un redémarrage règle ça.
