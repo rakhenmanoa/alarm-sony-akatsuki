@@ -108,16 +108,28 @@ echo "$n fichier(s) dans $out/"
 
 # Copie sur la partition d'échange de la carte SD (montée par Android)
 uuid="$(ash sm list-volumes public 2>/dev/null | awk '/^public:179/ && $2 == "mounted" { print $3; exit }')"
+copied=""
 if [ -n "$uuid" ]; then
-	# En root, on écrit directement sur le montage brut (/mnt/media_rw), sinon /storage
-	sd="/mnt/media_rw/$uuid"
-	[ "$(ash "[ -d $sd ] && echo oui")" = "oui" ] || sd="/storage/$uuid"
-	echo "== Copie sur la carte SD ($sd/firmware-akatsuki)"
-	ash rm -rf "$sd/firmware-akatsuki"
-	adb push "$out" "$sd/firmware-akatsuki" >/dev/null
-	ash sync
+	# /storage/<UUID> : chemin normal d'écriture sur la carte pour adb. Le montage brut
+	# /mnt/media_rw/<UUID> est refusé par SELinux (« secure_mkdirs() failed: Operation
+	# not permitted », constaté le 11/10/2026) ; essayé seulement en secours.
+	for sd in "/storage/$uuid" "/mnt/media_rw/$uuid"; do
+		[ "$(ash "[ -d $sd ] && echo oui")" = "oui" ] || continue
+		echo "== Copie sur la carte SD ($sd/firmware-akatsuki)"
+		ash rm -rf "$sd/firmware-akatsuki" >/dev/null 2>&1 || true
+		if adb push "$out" "$sd/firmware-akatsuki" >/dev/null 2>&1 && \
+		   [ "$(ash "[ -f $sd/firmware-akatsuki/qcom/sdm845/Sony/tama/adsp.mbn ] && echo oui")" = "oui" ]; then
+			ash sync
+			copied=1
+			break
+		fi
+		echo "   copie refusée sur $sd"
+		ash rm -rf "$sd/firmware-akatsuki" >/dev/null 2>&1 || true
+	done
+fi
+if [ -n "$copied" ]; then
 	echo "Sous Arch (root) : cp -a /mnt/partage/firmware-akatsuki/. /usr/lib/firmware/ && reboot"
 else
-	echo "Partition d'échange non montée par Android : copier $out/ sous Arch avec"
-	echo "  scp -r $out alarm@172.16.42.1:/tmp/ puis (root) cp -a /tmp/$(basename "$out")/. /usr/lib/firmware/"
+	echo "Pas de copie sur la carte SD. Sous Arch, copier depuis le PC :"
+	echo "  scp -r $out alarm@172.16.42.1:/tmp/   puis (root) cp -a /tmp/$(basename "$out")/. /usr/lib/firmware/ && reboot"
 fi
