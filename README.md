@@ -60,6 +60,8 @@ Le correctif Sony existe dans le noyau d'origine (commit `cfd1489` du noyau Sail
 | `docs/patches-petr-hodina.md` | Inventaire des patches de Petr Hodina (fusionnés, en attente, à récupérer) |
 | `test-boot/` | **boot.img** : noyau pmOS + DTB + initramfs maison (monte la carte SD et lance Arch ; sinon mode secours USB + journal sur http://172.16.42.1/) |
 | `docs/premier-demarrage-resultats.md` | **Résultats du premier démarrage réel** : ce qui marche, ce qui manque, pièges du bootloader |
+| `docs/arch-premiers-pas.md` | Arch démarré : connexion, internet par USB, mises à jour, firmwares manquants |
+| `scripts/partage-internet-pc.sh` | Sur le PC : partage la connexion internet avec le téléphone par le câble USB |
 | `docs/premier-demarrage.md` | **Installer Arch sur la carte SD pas à pas** : carte SD, boot.img, slot B, SSH par USB |
 | `docs/etape1-ecran-charge.md` | Étape 1 : écran + charge, procédure de test et ce qu'il faut observer |
 | `patches/reference-hodina-2023/` | Patches de 2023 récupérés, conservés tels quels avec leur analyse |
@@ -150,6 +152,7 @@ puis remplacer le rootfs par Arch.
 ## État
 
 10/10/2026 : **le noyau mainline 7.1 démarre sur le XZ3** (carte SD, USB, réseau USB, boutons).
+11/10/2026 : **Arch Linux ARM démarre depuis la carte SD** (SSH par USB, aucun service en échec).
 Écran pas encore. Détails : [docs/premier-demarrage-resultats.md](docs/premier-demarrage-resultats.md).
 
 ## Crédits

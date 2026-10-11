@@ -38,6 +38,10 @@ start)
 	echo "NCM" > configs/c.1/strings/0x409/configuration
 
 	mkdir -p functions/ncm.usb0
+	# Adresses MAC fixes (sinon tirées au hasard à chaque démarrage : le PC
+	# verrait une nouvelle carte réseau à chaque fois)
+	echo 02:58:5a:33:00:01 > functions/ncm.usb0/dev_addr   # côté téléphone
+	echo 02:58:5a:33:00:02 > functions/ncm.usb0/host_addr  # côté PC
 	ln -s functions/ncm.usb0 configs/c.1/
 
 	# Premier contrôleur USB device disponible (a600000.usb sur SDM845)

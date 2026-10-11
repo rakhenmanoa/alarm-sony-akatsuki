@@ -1,5 +1,7 @@
 # Interface réseau USB du téléphone (fonction NCM créée par akatsuki-usb-gadget).
-# Le téléphone est en 172.16.42.1 et donne une adresse au PC par DHCP.
+# Le téléphone est en 172.16.42.1 ; le PC reçoit toujours 172.16.42.2 par DHCP
+# (une seule adresse dans la réserve). Pour avoir internet sur le téléphone, le
+# PC partage sa connexion (voir docs/arch-premiers-pas.md) : passerelle .2.
 [Match]
 Name=usb0
 
@@ -7,9 +9,16 @@ Name=usb0
 Address=172.16.42.1/24
 DHCPServer=yes
 ConfigureWithoutCarrier=yes
+DNS=1.1.1.1
+DNS=9.9.9.9
+
+[Route]
+Gateway=172.16.42.2
+# Si le PC ne partage pas sa connexion, cette route est simplement inutile.
+GatewayOnLink=yes
 
 [DHCPServer]
 PoolOffset=2
-PoolSize=10
+PoolSize=1
 EmitDNS=no
 EmitRouter=no
