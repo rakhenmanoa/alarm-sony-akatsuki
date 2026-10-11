@@ -286,3 +286,7 @@ Il installe les firmwares validés dans `/usr/lib/firmware` (pas Venus, SLPI ni
 
 plus `iwd` (`EnableNetworkConfiguration=true`). La route par le câble USB passe en
 priorité basse (`Metric=2048`) pour que le Wi-Fi soit la route par défaut.
+
+**Validé le 11/10/2026** : après `installer-demarrage-auto.sh` et un redémarrage,
+`systemctl --failed` vide, `akatsuki-modem` actif, `wlan0` reconnecté seul (iwd),
+route par défaut par le Wi-Fi (métrique 306, USB en 2048), internet sans le PC.
