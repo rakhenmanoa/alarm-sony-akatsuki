@@ -1,5 +1,6 @@
 # Système sur la carte micro-SD (seul périphérique MMC : l'UFS est désactivé).
 # <périphérique>   <point>  <type>  <options>          <dump> <fsck>
 /dev/mmcblk0p1     /        ext4    rw,relatime        0      1
-# Partition d'échange FAT32 (aussi vue par Android) ; montée à la première utilisation.
-/dev/mmcblk0p2     /mnt/partage  vfat  noauto,nofail,x-systemd.automount,uid=1000,gid=1000,umask=022  0  0
+# Partition d'échange exFAT (aussi vue par Android) ; montée à la première utilisation.
+# Absente si la carte a été préparée avec PARTAGE=0 (nofail : sans conséquence).
+/dev/mmcblk0p2     /mnt/partage  auto  noauto,nofail,x-systemd.automount,x-systemd.device-timeout=5s,uid=1000,gid=1000,umask=022  0  0

@@ -24,7 +24,8 @@ secours** : USB + serveur web `http://172.16.42.1/` avec le journal du noyau
 
 - Une carte micro-SD de 4 à 512 Go, **entièrement effacée** par la procédure.
 - `sfdisk`, `mkfs.ext4`, `bsdtar` (paquet `libarchive`), `dtc`, `mkbootimg`,
-  `clang` + `lld`, `python3`, `fastboot`, `curl`, et de préférence `depmod` (`kmod`).
+  `clang` + `lld`, `python3`, `fastboot`, `curl`, `mkfs.exfat` (`exfatprogs`), et de
+  préférence `depmod` (`kmod`).
 - Le paquet noyau pmOS `linux-postmarketos-qcom-sdm845-7.1_rc1-r4.apk`.
 
 ## 1. Télécharger et vérifier Arch Linux ARM (aarch64 générique)
@@ -80,9 +81,20 @@ retirer et remettre la carte).
 | Partition | Système de fichiers | Contenu | Vue par |
 |---|---|---|---|
 | 1 (`/dev/mmcblk0p1`) | ext4 `ALARM_ROOT` | Arch Linux ARM | Arch seulement |
-| 2 (`/dev/mmcblk0p2`, 512 Mio à la fin) | FAT32 `XZ3_PARTAGE` | échange de fichiers + `NE-PAS-FORMATER.txt` | Android, Arch (`/mnt/partage`), PC |
+| 2 (`/dev/mmcblk0p2`, 8 Gio à la fin par défaut) | exFAT `XZ3_PARTAGE` | échange de fichiers + `NE-PAS-FORMATER.txt` | Android, Arch (`/mnt/partage`), PC |
 
-Android ignore les partitions Linux : il ne voit que la petite partition FAT32 et la
+Taille réglable avec la variable `PARTAGE` : `PARTAGE=16G`, `PARTAGE=512M`… ou
+`PARTAGE=0` (pas de partition d'échange). Exemples :
+
+```sh
+PARTAGE=16G scripts/prepare-sdcard-adb.sh ArchLinuxARM-aarch64-latest.tar.gz linux-postmarketos-qcom-sdm845-7.1_rc1-r4.apk
+sudo PARTAGE=4G scripts/prepare-sdcard.sh /dev/sdX ArchLinuxARM-aarch64-latest.tar.gz linux-postmarketos-qcom-sdm845-7.1_rc1-r4.apk
+```
+
+Arch garde toujours au moins 4 Gio. Sur le PC, il faut `mkfs.exfat` (paquet
+`exfatprogs`).
+
+Android ignore les partitions Linux : il ne voit que la partition d'échange et la
 monte comme une carte SD normale. Il ne propose donc plus de « configurer » (formater)
 une carte « non prise en charge ». Le bouton *Formater* reste dans *Paramètres →
 Stockage* : ne jamais l'utiliser sur cette carte.

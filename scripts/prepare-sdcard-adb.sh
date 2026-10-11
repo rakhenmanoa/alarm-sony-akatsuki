@@ -8,12 +8,17 @@
 #       <linux-postmarketos-qcom-sdm845-VERSION.apk>
 #
 # Prérequis côté téléphone : Options pour les développeurs → « Débogage root »
-# (adb root). Outils Android utilisés : dd, blockdev, mke2fs, newfs_msdos, toybox tar,
-# gzip, sm.
+# (adb root). Outils Android utilisés : dd, blockdev, mke2fs, mkfs.exfat (ou à défaut
+# newfs_msdos), toybox tar, gzip, sm.
 #
 # Résultat (table MBR) : partition 1 = ext4 « ALARM_ROOT » (Arch) ; partition 2 =
-# FAT32 « XZ3_PARTAGE », 512 Mio à la fin. Android ne voit que la partition 2 (il
-# ignore les partitions Linux) : plus de « carte non prise en charge » à formater.
+# exFAT « XZ3_PARTAGE », 8 Gio par défaut, à la fin. Android ne voit que la partition 2
+# (il ignore les partitions Linux) : plus de « carte non prise en charge » à formater.
+#
+# Variable optionnelle :
+#   PARTAGE   taille de la partition d'échange : « 8G » (défaut), « 512M », « 16G »… ;
+#             « 0 » = pas de partition d'échange. Exemple :
+#             PARTAGE=16G scripts/prepare-sdcard-adb.sh …
 # Côté PC : adb, python3 (fabrique la table de partitions), gzip, tar.
 # (Le sgdisk d'Android est une version réduite qui ne sait pas créer de partition.)
 #
@@ -38,6 +43,15 @@ TMPTAR=/data/local/tmp/alarm-rootfs.tar.gz
 
 command -v adb >/dev/null 2>&1 || die "adb introuvable sur le PC."
 command -v python3 >/dev/null 2>&1 || die "python3 introuvable sur le PC."
+# Taille de la partition d'échange, en secteurs de 512 octets
+PARTAGE="${PARTAGE:-8G}"
+case "$PARTAGE" in
+	0) fat=0 ;;
+	*[Gg]) n="${PARTAGE%[Gg]}"; case "$n" in ''|*[!0-9]*) die "PARTAGE invalide : $PARTAGE";; esac; fat=$((n * 2097152)) ;;
+	*[Mm]) n="${PARTAGE%[Mm]}"; case "$n" in ''|*[!0-9]*) die "PARTAGE invalide : $PARTAGE";; esac; fat=$((n * 2048)) ;;
+	*) die "PARTAGE invalide : $PARTAGE (exemples : 8G, 512M, 0)" ;;
+esac
+[ "$fat" -eq 0 ] || [ "$fat" -ge 131072 ] || die "PARTAGE trop petit (minimum 64M, ou 0)."
 [ -f "$tarball" ] || die "archive Arch Linux ARM introuvable : $tarball"
 [ -f "$apk" ]     || die "paquet noyau pmOS introuvable : $apk"
 [ -d "$overlay" ] || die "dossier rootfs/ du dépôt introuvable : $overlay"
@@ -66,10 +80,17 @@ sectors="$(ash cat /sys/block/mmcblk0/size)"
 size=$((sectors * 512))
 [ "$size" -ge $((4 * 1024 * 1024 * 1024)) ] || die "carte de moins de 4 Go."
 [ "$size" -le $((512 * 1024 * 1024 * 1024)) ] || die "carte de plus de 512 Go : refusé par sécurité."
+[ $((sectors - fat - 2048)) -ge 8388608 ] || \
+	die "carte trop petite pour une partition d'échange de $PARTAGE (Arch garde au moins 4 Gio) : essayer PARTAGE=1G ou PARTAGE=0."
 name="$(ash cat /sys/block/mmcblk0/device/name 2>/dev/null)"
 
 echo
 echo "Carte SD : $DEV — $((size / 1000000000)) Go — « $name »"
+if [ "$fat" -gt 0 ]; then
+	echo "Partition d'échange exFAT vue par Android : $PARTAGE ; le reste pour Arch."
+else
+	echo "Sans partition d'échange (PARTAGE=0) : tout pour Arch."
+fi
 echo "(la mémoire interne du téléphone, /dev/block/sd*, n'est pas concernée)"
 echo
 echo "TOUT LE CONTENU DE LA CARTE SD VA ÊTRE EFFACÉ."
@@ -91,18 +112,24 @@ if [ -n "$(ash "grep -E '^/dev/block/(vold/public:179|mmcblk0)' /proc/mounts")" 
 fi
 
 # -------------------------------------------------------- partitionnement ---
-echo "== Partitionnement (MBR : Arch en ext4 + 512 Mio en FAT32 à la fin)"
-# Premier Mio de la carte fabriqué sur le PC : table MBR à deux partitions, le
-# reste à zéro (efface aussi les anciennes signatures en début de carte).
-#   1 : type 0x83 (Linux), du secteur 2048 jusqu'aux 512 derniers Mio ;
-#   2 : type 0x0c (FAT32 LBA), les 512 derniers Mio (alignés sur 1 Mio).
+if [ "$fat" -gt 0 ]; then
+	echo "== Partitionnement (MBR : Arch en ext4 + partition d'échange de $PARTAGE à la fin)"
+else
+	echo "== Partitionnement (MBR : Arch en ext4 sur toute la carte)"
+fi
+# Premier Mio de la carte fabriqué sur le PC : table MBR, le reste à zéro (efface
+# aussi les anciennes signatures en début de carte).
+#   1 : type 0x83 (Linux), du secteur 2048 jusqu'à la partition d'échange ;
+#   2 : type 0x07 (exFAT), les PARTAGE derniers octets (alignés sur 1 Mio).
 mbr="$(mktemp)"
-python3 -I - "$mbr" "$sectors" <<'PY'
+python3 -I - "$mbr" "$sectors" "$fat" <<'PY'
 import struct, sys
-out, sectors = sys.argv[1], int(sys.argv[2])
-fat = 1048576                                   # 512 Mio
-p2 = (sectors - fat) // 2048 * 2048
-parts = [(0x83, 2048, p2 - 2048), (0x0C, p2, sectors - p2)]
+out, sectors, fat = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
+if fat:
+    p2 = (sectors - fat) // 2048 * 2048
+    parts = [(0x83, 2048, p2 - 2048), (0x07, p2, sectors - p2)]
+else:
+    parts = [(0x83, 2048, sectors - 2048)]
 img = bytearray(1024 * 1024)
 for i, (typ, start, count) in enumerate(parts):
     assert 0 < count <= 0xFFFFFFFF
@@ -119,11 +146,15 @@ ash rm -f /data/local/tmp/alarm-mbr.bin
 ash "blockdev --rereadpt $DEV" >/dev/null 2>&1 || true
 ok=""
 for i in 1 2 3 4 5 6 7 8 9 10; do
-	if [ "$(ash "[ -b $PART ] && [ -b $PART2 ] && echo oui")" = "oui" ]; then ok=1; break; fi
+	if [ "$fat" -gt 0 ]; then
+		[ "$(ash "[ -b $PART ] && [ -b $PART2 ] && echo oui")" = "oui" ] && { ok=1; break; }
+	else
+		[ "$(ash "[ -b $PART ] && echo oui")" = "oui" ] && { ok=1; break; }
+	fi
 	ash "blockdev --rereadpt $DEV" >/dev/null 2>&1 || true
 	sleep 1
 done
-[ -n "$ok" ] || die "$PART / $PART2 n'apparaissent pas. Retirer et remettre la carte, puis relancer."
+[ -n "$ok" ] || die "les partitions n'apparaissent pas. Retirer et remettre la carte, puis relancer."
 # Android peut tenter de monter les nouvelles partitions : on s'assure que non
 for vol in $(ash sm list-volumes public 2>/dev/null | awk '/^public:179/ { print $1 }'); do
 	ash sm unmount "$vol" >/dev/null 2>&1 || true
@@ -132,8 +163,15 @@ for m in $(ash "grep -E '^/dev/block/(vold/public:179|mmcblk0)' /proc/mounts | c
 	ash umount "$m" >/dev/null 2>&1 || true
 done
 
-echo "== Formatage FAT32 de la partition d'échange (XZ3_PARTAGE)"
-ash newfs_msdos -F 32 -L XZ3_PARTAGE "$PART2" >/dev/null || die "newfs_msdos a échoué."
+if [ "$fat" -gt 0 ]; then
+	if [ -n "$(ash "command -v mkfs.exfat")" ]; then
+		echo "== Formatage exFAT de la partition d'échange (XZ3_PARTAGE)"
+		ash mkfs.exfat -L XZ3_PARTAGE "$PART2" >/dev/null || die "mkfs.exfat a échoué."
+	else
+		echo "== mkfs.exfat absent d'Android : partition d'échange formatée en FAT32"
+		ash newfs_msdos -F 32 -L XZ3_PARTAGE "$PART2" >/dev/null || die "newfs_msdos a échoué."
+	fi
+fi
 
 echo "== Formatage ext4 (ALARM_ROOT)"
 ash mke2fs -F -t ext4 -L ALARM_ROOT "$PART" >/dev/null || die "mke2fs a échoué."
@@ -203,15 +241,27 @@ ash umount "$MNT"
 ash rmdir "$MNT" 2>/dev/null || true
 trap 'rm -rf "$work"' EXIT
 
-echo "== Partition d'échange (avertissement lisible depuis Android)"
-ash "mkdir -p $FATMNT && mount -t vfat $PART2 $FATMNT" || die "montage de la partition FAT impossible."
-adb push "$here/../sdcard/NE-PAS-FORMATER.txt" "$FATMNT/" >/dev/null
-ash "sync; umount $FATMNT; rmdir $FATMNT"
+if [ "$fat" -gt 0 ]; then
+	echo "== Partition d'échange (avertissement lisible depuis Android)"
+	ash mkdir -p "$FATMNT"
+	if [ "$(ash "for t in exfat sdfat vfat; do mount -t \$t $PART2 $FATMNT 2>/dev/null && { echo OK; break; }; done")" = "OK" ]; then
+		adb push "$here/../sdcard/NE-PAS-FORMATER.txt" "$FATMNT/" >/dev/null
+		ash "sync; umount $FATMNT"
+	else
+		echo "   (montage impossible depuis ce noyau Android : NE-PAS-FORMATER.txt non copié ;"
+		echo "    le copier plus tard depuis Arch dans /mnt/partage)"
+	fi
+	ash rmdir "$FATMNT" 2>/dev/null || true
+fi
 
 echo
 echo "Carte SD prête (noyau $kver)."
-echo "Redémarrer le téléphone (ou retirer et remettre la carte) : Android montera la"
-echo "partition d'échange de 512 Mio comme une carte SD normale. Ne jamais la formater"
-echo "depuis Android (voir NE-PAS-FORMATER.txt sur la carte)."
+if [ "$fat" -gt 0 ]; then
+	echo "Redémarrer le téléphone (ou retirer et remettre la carte) : Android montera la"
+	echo "partition d'échange ($PARTAGE) comme une carte SD normale. Ne jamais la formater"
+	echo "depuis Android (voir NE-PAS-FORMATER.txt sur la carte)."
+else
+	echo "Sans partition d'échange, Android proposera de formater la carte : REFUSER."
+fi
 echo "Suite : flasher boot-arch.img dans boot_b (voir docs/premier-demarrage.md)."
 echo "Identifiants par défaut : alarm/alarm et root/root (à changer dès le premier accès)."

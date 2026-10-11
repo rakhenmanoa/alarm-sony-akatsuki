@@ -11,11 +11,15 @@
 #       linux-postmarketos-qcom-sdm845-7.1_rc1-r4.apk
 #
 # Variables optionnelles :
+#   PARTAGE       taille de la partition d'échange exFAT vue par Android, à la fin
+#                 de la carte : « 8G » par défaut, « 512M », « 16G »… ; « 0 » = pas de
+#                 partition d'échange (Android proposera alors de formater la carte).
+#                 Exemple : sudo PARTAGE=16G scripts/prepare-sdcard.sh …
 #   FIRMWARE_DIR  dossier lib/firmware à copier (ex. firmwares de Petr Hodina)
 #
 # Résultat (table MBR) :
 #   partition 1 : ext4 « ALARM_ROOT », Arch Linux ARM (/dev/mmcblk0p1 dans le téléphone) ;
-#   partition 2 : FAT32 « XZ3_PARTAGE », 512 Mio à la fin de la carte. Android ne voit
+#   partition 2 : exFAT « XZ3_PARTAGE », 8 Gio (PARTAGE) à la fin de la carte. Android ne voit
 #                 que celle-ci (il ignore les partitions Linux) : plus de message « carte
 #                 non prise en charge » qui propose de formater. Arch la monte sur /mnt/partage.
 # Identifiants Arch Linux ARM par défaut : alarm/alarm et root/root (à changer).
@@ -30,9 +34,18 @@ here="$(cd "$(dirname "$0")" && pwd)"
 overlay="$here/../rootfs"
 
 [ "$(id -u)" -eq 0 ] || die "lancer en root (sudo)."
-for c in lsblk sfdisk mkfs.ext4 mkfs.fat bsdtar gzip tar findmnt; do
+for c in lsblk sfdisk mkfs.ext4 mkfs.exfat bsdtar gzip tar findmnt; do
 	command -v "$c" >/dev/null 2>&1 || die "commande manquante : $c"
 done
+# Taille de la partition d'échange, en secteurs de 512 octets
+PARTAGE="${PARTAGE:-8G}"
+case "$PARTAGE" in
+	0) fat=0 ;;
+	*[Gg]) n="${PARTAGE%[Gg]}"; case "$n" in ''|*[!0-9]*) die "PARTAGE invalide : $PARTAGE";; esac; fat=$((n * 2097152)) ;;
+	*[Mm]) n="${PARTAGE%[Mm]}"; case "$n" in ''|*[!0-9]*) die "PARTAGE invalide : $PARTAGE";; esac; fat=$((n * 2048)) ;;
+	*) die "PARTAGE invalide : $PARTAGE (exemples : 8G, 512M, 0)" ;;
+esac
+[ "$fat" -eq 0 ] || [ "$fat" -ge 131072 ] || die "PARTAGE trop petit (minimum 64M, ou 0)."
 [ -f "$tarball" ] || die "archive Arch Linux ARM introuvable : $tarball"
 [ -f "$apk" ]     || die "paquet noyau pmOS introuvable : $apk"
 [ -d "$overlay" ] || die "dossier rootfs/ du dépôt introuvable : $overlay"
@@ -52,6 +65,9 @@ fi
 size="$(lsblk -bdno SIZE "$dev")"
 [ "$size" -le $((512 * 1024 * 1024 * 1024)) ] || die "$dev fait plus de 512 Go : refusé par sécurité."
 [ "$size" -ge $((4 * 1024 * 1024 * 1024)) ] || die "$dev fait moins de 4 Go : trop petit."
+# Arch doit garder au moins 4 Gio
+[ $((size / 512 - fat - 2048)) -ge 8388608 ] || \
+	die "carte trop petite pour une partition d'échange de $PARTAGE (Arch garde au moins 4 Gio) : essayer PARTAGE=1G ou PARTAGE=0."
 
 if lsblk -lnpo MOUNTPOINT "$dev" | grep -q .; then
 	die "une partition de $dev est montée. La démonter d'abord (umount)."
@@ -68,29 +84,38 @@ read -r answer
 [ "$answer" = "$dev" ] || die "confirmation incorrecte, rien n'a été modifié."
 
 # ------------------------------------------------------------ partitionnement --
-echo "== Partitionnement (MBR : Arch en ext4 + 512 Mio en FAT32 à la fin)"
 sectors=$((size / 512))
-fat=1048576                                     # 512 Mio en secteurs de 512 octets
-p2start=$(( (sectors - fat) / 2048 * 2048 ))    # aligné sur 1 Mio
-p1size=$((p2start - 2048))
-printf 'label: dos\nstart=2048, size=%s, type=83\nstart=%s, size=%s, type=c\n' \
-	"$p1size" "$p2start" "$((sectors - p2start))" | sfdisk --quiet --wipe always "$dev"
+if [ "$fat" -gt 0 ]; then
+	echo "== Partitionnement (MBR : Arch en ext4 + $PARTAGE en exFAT à la fin)"
+	p2start=$(( (sectors - fat) / 2048 * 2048 ))    # aligné sur 1 Mio
+	printf 'label: dos\nstart=2048, size=%s, type=83\nstart=%s, size=%s, type=7\n' \
+		"$((p2start - 2048))" "$p2start" "$((sectors - p2start))" | sfdisk --quiet --wipe always "$dev"
+	nparts=2
+else
+	echo "== Partitionnement (MBR : Arch en ext4 sur toute la carte, sans partition d'échange)"
+	printf 'label: dos\nstart=2048, type=83\n' | sfdisk --quiet --wipe always "$dev"
+	nparts=1
+fi
 sync
 
-# Attendre que le noyau voie les deux partitions (relecture forcée si besoin).
+# Attendre que le noyau voie les partitions (relecture forcée si besoin).
 part=""; part2=""
 for i in 1 2 3 4 5 6 7 8 9 10; do
 	udevadm settle 2>/dev/null || true
 	part="$(lsblk -lnpo NAME,TYPE "$dev" | awk '$2 == "part" { print $1 }' | sed -n 1p)"
 	part2="$(lsblk -lnpo NAME,TYPE "$dev" | awk '$2 == "part" { print $1 }' | sed -n 2p)"
-	[ -n "$part" ] && [ -b "$part" ] && [ -n "$part2" ] && [ -b "$part2" ] && break
+	if [ -n "$part" ] && [ -b "$part" ]; then
+		[ "$nparts" -eq 1 ] && break
+		[ -n "$part2" ] && [ -b "$part2" ] && break
+	fi
 	blockdev --rereadpt "$dev" 2>/dev/null || partx -u "$dev" 2>/dev/null || true
 	sleep 1
 done
-[ -n "$part" ] && [ -b "$part" ] && [ -n "$part2" ] && [ -b "$part2" ] || \
-	die "partitions introuvables après partitionnement (débrancher et rebrancher la carte, puis relancer)."
-
-mkfs.fat -F 32 -n XZ3_PARTAGE "$part2" >/dev/null
+[ -n "$part" ] && [ -b "$part" ] || die "partition introuvable après partitionnement (débrancher et rebrancher la carte, puis relancer)."
+if [ "$nparts" -eq 2 ]; then
+	[ -n "$part2" ] && [ -b "$part2" ] || die "partition d'échange introuvable (débrancher et rebrancher la carte, puis relancer)."
+	mkfs.exfat -L XZ3_PARTAGE "$part2" >/dev/null
+fi
 mkfs.ext4 -q -F -L ALARM_ROOT "$part"
 
 mnt="$(mktemp -d)"
@@ -145,12 +170,16 @@ done
 
 mkdir -p "$mnt/mnt/partage"
 
-echo "== Partition d'échange (avertissement lisible depuis Android)"
-fatmnt="$(mktemp -d)"
-mount "$part2" "$fatmnt"
-cp "$here/../sdcard/NE-PAS-FORMATER.txt" "$fatmnt/"
-umount "$fatmnt"
-rmdir "$fatmnt"
+if [ "$nparts" -eq 2 ]; then
+	echo "== Partition d'échange (avertissement lisible depuis Android)"
+	fatmnt="$(mktemp -d)"
+	mount "$part2" "$fatmnt"
+	cp "$here/../sdcard/NE-PAS-FORMATER.txt" "$fatmnt/"
+	umount "$fatmnt"
+	rmdir "$fatmnt"
+else
+	echo "Attention : sans partition d'échange, Android proposera de formater la carte : refuser."
+fi
 
 sync
 echo
