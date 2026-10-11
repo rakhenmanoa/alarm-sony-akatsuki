@@ -164,11 +164,16 @@ for m in $(ash "grep -E '^/dev/block/(vold/public:179|mmcblk0)' /proc/mounts | c
 done
 
 if [ "$fat" -gt 0 ]; then
-	if [ -n "$(ash "command -v mkfs.exfat")" ]; then
+	# Même test qu'Android (vold, Exfat::IsSupported) : outils exFAT présents ET
+	# pilote exFAT dans le noyau. Sinon Android ne saurait pas monter la partition
+	# et reproposerait de formater la carte : on se rabat sur FAT32.
+	if [ -n "$(ash "command -v mkfs.exfat")" ] && [ -n "$(ash "command -v fsck.exfat")" ] && \
+	   [ -n "$(ash "grep -wE 'exfat|sdfat' /proc/filesystems")" ]; then
 		echo "== Formatage exFAT de la partition d'échange (XZ3_PARTAGE)"
 		ash mkfs.exfat -L XZ3_PARTAGE "$PART2" >/dev/null || die "mkfs.exfat a échoué."
 	else
-		echo "== mkfs.exfat absent d'Android : partition d'échange formatée en FAT32"
+		echo "== LineageOS ne gère pas l'exFAT ici : partition d'échange formatée en FAT32"
+		echo "   (fichiers limités à 4 Go chacun)"
 		ash newfs_msdos -F 32 -L XZ3_PARTAGE "$PART2" >/dev/null || die "newfs_msdos a échoué."
 	fi
 fi
