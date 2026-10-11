@@ -238,5 +238,12 @@ module loading is restricted`. Le noyau est compilé avec
 `CONFIG_LOCK_DOWN_KERNEL_FORCE_INTEGRITY=y` (verrouillage actif dès le démarrage,
 impossible à lever par la ligne de commande) : tout module non signé par la clé de
 pmOS est refusé, et `ath10k_core` ne se charge plus du tout. **Ne pas utiliser ce
-correctif avec le noyau pmOS** ; il faut un noyau recompilé (avec le patch
-« skip quiet mode »), ou une version de pmOS qui l'intègre.
+correctif avec le noyau pmOS d'origine.**
+
+**Solution retenue** : retirer ce verrouillage du noyau pmOS lui-même.
+[`scripts/noyau-sans-verrou.py`](../scripts/noyau-sans-verrou.py) remplace, dans
+`lockdown_lsm_init()`, le saut conditionnel qui active le verrouillage par un `nop`
+(motif vérifié, une seule occurrence). `SANS_VERROU=1 test-boot/build.sh …` produit le
+boot.img correspondant (`boot-arch-wifi.img`). Vérifié sous QEMU : même démarrage,
+sans la ligne `Kernel is locked down from Kernel configuration`. Le module
+`ath10k_core` corrigé peut alors être chargé (non signé, noyau marqué « tainted »).

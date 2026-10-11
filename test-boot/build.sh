@@ -7,6 +7,9 @@
 # Usage :
 #   test-boot/build.sh <paquet-noyau-pmos.apk> [sortie.img]
 #
+# SANS_VERROU=1 : retire le verrouillage du noyau pmOS (scripts/noyau-sans-verrou.py),
+# pour charger des modules corrigés non signés (Wi-Fi : ath10k-sans-quiet.py).
+#
 # Nécessite : clang + ld.lld (cible aarch64), python3, gzip, tar, mkbootimg, dtc.
 #
 # Puis, téléphone en fastboot (Volume haut + USB, LED bleue) :
@@ -59,8 +62,15 @@ echo "== DTB (écran simple-framebuffer, UFS vérifié désactivé)"
 "$repo/scripts/build-dtb.sh" "$tmp/apk/boot/dtbs/qcom/sdm845-sony-xperia-tama-akatsuki.dtb" \
 	"$tmp/akatsuki.dtb" >/dev/null
 
+noyau="$tmp/apk/boot/vmlinuz"
+if [ "${SANS_VERROU:-0}" = 1 ]; then
+	echo "== Noyau sans verrouillage (SANS_VERROU=1)"
+	python3 -I "$repo/scripts/noyau-sans-verrou.py" "$noyau" "$tmp/vmlinuz-sans-verrou"
+	noyau="$tmp/vmlinuz-sans-verrou"
+fi
+
 echo "== boot.img"
-"$repo/scripts/make-bootimg.sh" "$tmp/apk/boot/vmlinuz" "$tmp/akatsuki.dtb" \
+"$repo/scripts/make-bootimg.sh" "$noyau" "$tmp/akatsuki.dtb" \
 	"$tmp/initramfs.img" "$out" \
 	"console=tty0 console=ttyMSM0,115200 clk_ignore_unused pd_ignore_unused printk.devkmsg=on"
 echo

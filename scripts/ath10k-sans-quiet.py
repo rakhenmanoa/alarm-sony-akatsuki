@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """ath10k-sans-quiet.py <ath10k_core.ko> <sortie.ko>
 
-⚠️ INUTILISABLE avec le noyau pmOS 7.1-rc1 : son verrouillage (lockdown « integrity »,
-forcé à la compilation) refuse tout module non signé, et ath10k_core ne se charge
-plus. Utile seulement avec un noyau sans ce verrouillage ou qu'on signe soi-même.
+⚠️ Le noyau pmOS 7.1-rc1 d'origine refuse ce module (verrouillage « integrity »
+forcé à la compilation). Démarrer d'abord un boot.img construit avec SANS_VERROU=1
+(scripts/noyau-sans-verrou.py), qui retire ce verrouillage.
 
 Corrige le module ath10k_core du noyau pmOS pour que le Wi-Fi du Xperia XZ3 ne
 plante plus : la fonction ath10k_thermal_set_throttling() rend la main tout de
