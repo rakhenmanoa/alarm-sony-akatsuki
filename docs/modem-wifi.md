@@ -115,7 +115,7 @@ Résultats :
 |---|---|
 | démarrage avec `boot-arch-modem.img` | ✅ démarrage normal, modem vu (`remoteproc1: 4080000.remoteproc is available`), arrêté |
 | modem (`rmtfs -s`) | ⚠️ `now up`, EFS lu (fs1, fs2, fsg, fsc ; `fsg_oem_1/2` refusés), zone `0xfdc01000` acceptée ; puis `fatal error without message` **40 s après chaque démarrage**, en boucle. Seuls les services de base du modem (66, 43) apparaissent dans `qrtr-lookup` |
-| IPA (`boot-arch-ipa.img`) | ✅ `IPA driver setup completed successfully`, reçoit les événements du modem ; **mais le modem plante toujours 40 s après son démarrage** : ce n'était pas la cause. `tqftpserv` ne reçoit aucune demande. Pistes : partitions `fsg_oem_1/2` propres à Sony, comparaison avec le démarrage du modem sous LineageOS |
+| IPA (`boot-arch-ipa.img`) | ✅ `IPA driver setup completed successfully`, reçoit les événements du modem ; **mais le modem plante toujours 40 s après son démarrage** : ce n'était pas la cause. `tqftpserv` ne reçoit aucune demande. `tqftpserv -d` : aucune demande. Sous LineageOS, le modem lit l'EFS puis, 0,2 s après, demande `readwrite/ota_firewall/ruleset` et `wlanmdsp.mbn` en TFTP, et le Wi-Fi démarre 1 s plus tard ; sous Arch, il s'arrête entre la lecture de l'EFS et le TFTP. `fsg_oem_1/2` n'existent pas dans le téléphone (refusés aussi sous LineageOS). Adresses mémoire identiques à LineageOS. Piste suivante : chaîne d'erreur dans le vidage mémoire du modem |
 | Wi-Fi (`wlan0`, scan, connexion) | pas encore (le service Wi-Fi du modem n'apparaît pas) |
 
 ## 4 bis. Essai avec l'IPA (`boot-arch-ipa.img`)
