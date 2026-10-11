@@ -14,6 +14,8 @@ Sous Linux mainline, aucun ne répond. Ce script les annonce et affiche chaque
 requête reçue (en-tête QMI + champs TLV en hexadécimal) ; il répond « échec / non
 pris en charge » (QMI_RESULT_FAILURE, QMI_ERR_NOT_SUPPORTED) ou, avec --muet, ne
 répond pas. But : savoir si le modem les interroge et avec quels messages.
+Les messages du journal du modem (service 230, mlog) sont affichés en clair
+(« [modem] fichier.c:ligne message ») et acquittés par un « succès ».
 
 Usage (root, sous Arch, AVANT de démarrer le modem) :
     python3 qmi-ecoute.py                  # services Sony 227 à 230
@@ -52,6 +54,25 @@ def tlvs(data):
     return out
 
 
+def champs(data):
+    """TLV → {type: valeur}"""
+    d, i = {}, 0
+    while i + 3 <= len(data):
+        t, n = data[i], struct.unpack_from("<H", data, i + 1)[0]
+        d[t] = data[i + 3:i + 3 + n]
+        i += 3 + n
+    return d
+
+
+def chaine(v):
+    """Chaîne QMI : longueur sur 2 octets puis texte."""
+    if v and len(v) >= 2:
+        n = struct.unpack_from("<H", v)[0]
+        if n == len(v) - 2:
+            return v[2:].decode("ascii", "replace")
+    return v.hex(" ") if v else ""
+
+
 def parse_spec(s):
     p = [int(x, 0) for x in s.split(":")]
     return p[0], (p[1] if len(p) > 1 else 1), (p[2] if len(p) > 2 else 0)
@@ -88,9 +109,19 @@ def main():
                     log("[%d] %d:%d → paquet court : %s" % (svc, snode, sport, data.hex(" ")))
                     continue
                 typ, txn, msg, ln = struct.unpack_from("<BHHH", data)
+                corps = data[7:7 + ln]
+                if svc == 230 and typ == 0 and msg == 1:
+                    # Journal du modem (mlog) : une ligne lisible, réponse « succès »
+                    c = champs(corps)
+                    ligne = struct.unpack_from("<I", c[4])[0] if len(c.get(4, b"")) == 4 else "?"
+                    log("[modem] %s:%s %s" % (chaine(c.get(3)), ligne, chaine(c.get(6))))
+                    if not muet:
+                        s.sendto(struct.pack("<BHHH", 2, txn, msg, 7) + struct.pack("<BHHH", 0x02, 4, 0, 0),
+                                 (snode, sport))
+                    continue
                 log("[%d %s] %d:%d → %s txn=%d msg=0x%04x (%d o)"
                     % (svc, NOMS.get(svc, "?"), snode, sport, TYPES.get(typ, typ), txn, msg, ln))
-                for line in tlvs(data[7:7 + ln]):
+                for line in tlvs(corps):
                     log("      " + line)
                 if typ == 0 and not muet:
                     # QMI_RESULT_FAILURE (1), QMI_ERR_NOT_SUPPORTED (0x5e)

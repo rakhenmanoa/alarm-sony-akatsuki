@@ -175,3 +175,15 @@ et affiche ce que le modem leur demande :
 python3 qmi-ecoute.py | tee /root/qmi-ecoute.log      # session 3, AVANT rmtfs
 ```
 
+
+**Résultat du 11/10/2026 : le modem dépasse son blocage.** Dès que les services Sony
+existent (même s'ils répondent « non pris en charge »), le modem continue son
+démarrage : il interroge **MiscTA (228)** et envoie son **journal (mlog, 230)** en clair.
+
+- MiscTA, message `0x0001` (lecture d'une unité TA ?) : unités 0x7d3, 0x7da, 0x7db,
+  0x7df, 0x9c7 ; message `0x0002` (taille d'une unité ?) : 0x8a1, 0x8b3, 0x9b7, 0x9f6 ;
+  message `0x0004` (écriture) : unité 0x9c7 avec le texte `-1:3:s1sl/s1sl_integration.c:2121`.
+- Journal du modem : `MMGSDI_CARD_INSERTED_EVT, slot: 0x1` (carte SIM détectée),
+  `MMGSDI_PIN1_EVT`, `SIM Lock response message not supported(status=1)`.
+
+Prochaine étape : un vrai service MiscTA qui lit une copie de la partition TA.
