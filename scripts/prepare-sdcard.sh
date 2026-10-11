@@ -18,9 +18,11 @@
 #   FIRMWARE_DIR  dossier lib/firmware à copier (ex. firmwares de Petr Hodina)
 #
 # Résultat (table MBR) :
-#   partition 1 : ext4 « ALARM_ROOT », Arch Linux ARM (/dev/mmcblk0p1 dans le téléphone) ;
+#   partition 1 : ext4 « ALARM_ROOT », Arch Linux ARM (/dev/mmcblk0p1 dans le téléphone),
+#                 type MBR 0xDA et non 0x83 : LineageOS monte les partitions 0x83 (ext4)
+#                 et verrait Arch ; le noyau d'Arch, lui, ignore le type ;
 #   partition 2 : exFAT « XZ3_PARTAGE », 8 Gio (PARTAGE) à la fin de la carte. Android ne voit
-#                 que celle-ci (il ignore les partitions Linux) : plus de message « carte
+#                 que celle-ci (il ignore le type 0xDA) : plus de message « carte
 #                 non prise en charge » qui propose de formater. Arch la monte sur /mnt/partage.
 # Identifiants Arch Linux ARM par défaut : alarm/alarm et root/root (à changer).
 
@@ -88,12 +90,12 @@ sectors=$((size / 512))
 if [ "$fat" -gt 0 ]; then
 	echo "== Partitionnement (MBR : Arch en ext4 + $PARTAGE en exFAT à la fin)"
 	p2start=$(( (sectors - fat) / 2048 * 2048 ))    # aligné sur 1 Mio
-	printf 'label: dos\nstart=2048, size=%s, type=83\nstart=%s, size=%s, type=7\n' \
+	printf 'label: dos\nstart=2048, size=%s, type=da\nstart=%s, size=%s, type=7\n' \
 		"$((p2start - 2048))" "$p2start" "$((sectors - p2start))" | sfdisk --quiet --wipe always "$dev"
 	nparts=2
 else
 	echo "== Partitionnement (MBR : Arch en ext4 sur toute la carte, sans partition d'échange)"
-	printf 'label: dos\nstart=2048, type=83\n' | sfdisk --quiet --wipe always "$dev"
+	printf 'label: dos\nstart=2048, type=da\n' | sfdisk --quiet --wipe always "$dev"
 	nparts=1
 fi
 sync

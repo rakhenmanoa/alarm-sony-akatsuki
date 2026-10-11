@@ -12,8 +12,9 @@
 # newfs_msdos), toybox tar, gzip, sm.
 #
 # Résultat (table MBR) : partition 1 = ext4 « ALARM_ROOT » (Arch) ; partition 2 =
-# exFAT « XZ3_PARTAGE », 8 Gio par défaut, à la fin. Android ne voit que la partition 2
-# (il ignore les partitions Linux) : plus de « carte non prise en charge » à formater.
+# exFAT « XZ3_PARTAGE », 8 Gio par défaut, à la fin. La partition 1 porte le type MBR
+# 0xDA, qu'aucun Android (ni LineageOS, qui accepte l'ext4 sur les partitions 0x83) ne
+# monte : Android ne voit que la partition 2.
 #
 # Variable optionnelle :
 #   PARTAGE   taille de la partition d'échange : « 8G » (défaut), « 512M », « 16G »… ;
@@ -119,7 +120,11 @@ else
 fi
 # Premier Mio de la carte fabriqué sur le PC : table MBR, le reste à zéro (efface
 # aussi les anciennes signatures en début de carte).
-#   1 : type 0x83 (Linux), du secteur 2048 jusqu'à la partition d'échange ;
+#   1 : type 0xDA (« données, pas un système de fichiers »), du secteur 2048 jusqu'à
+#       la partition d'échange. Volontairement PAS 0x83 (Linux) : LineageOS monte les
+#       partitions 0x83 en ext4 et verrait Arch comme une seconde carte (constaté le
+#       11/10/2026). Le noyau d'Arch ignore ce type : l'initramfs monte /dev/mmcblk0p1
+#       en ext4 directement ;
 #   2 : type 0x07 (exFAT), les PARTAGE derniers octets (alignés sur 1 Mio).
 mbr="$(mktemp)"
 python3 -I - "$mbr" "$sectors" "$fat" <<'PY'
@@ -127,9 +132,9 @@ import struct, sys
 out, sectors, fat = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
 if fat:
     p2 = (sectors - fat) // 2048 * 2048
-    parts = [(0x83, 2048, p2 - 2048), (0x07, p2, sectors - p2)]
+    parts = [(0xDA, 2048, p2 - 2048), (0x07, p2, sectors - p2)]
 else:
-    parts = [(0x83, 2048, sectors - 2048)]
+    parts = [(0xDA, 2048, sectors - 2048)]
 img = bytearray(1024 * 1024)
 for i, (typ, start, count) in enumerate(parts):
     assert 0 < count <= 0xFFFFFFFF

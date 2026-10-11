@@ -94,8 +94,25 @@ sudo PARTAGE=4G scripts/prepare-sdcard.sh /dev/sdX ArchLinuxARM-aarch64-latest.t
 Arch garde toujours au moins 4 Gio. Sur le PC, il faut `mkfs.exfat` (paquet
 `exfatprogs`).
 
-Android ignore les partitions Linux : il ne voit que la partition d'échange et la
-monte comme une carte SD normale. Il ne propose donc plus de « configurer » (formater)
+La partition d'Arch porte le type MBR **0xDA** (« données ») et non 0x83 (« Linux ») :
+**LineageOS monte l'ext4 des partitions 0x83** (constaté le 11/10/2026) et verrait Arch
+comme une seconde carte, avec le risque d'y écrire ou de proposer de la formater.
+Aucun Android ne monte le type 0xDA ; le noyau d'Arch, lui, ignore ce type (l'initramfs
+monte `/dev/mmcblk0p1` en ext4 directement — vérifié dans QEMU). Android ne voit donc que
+la partition d'échange et la monte comme une carte SD normale.
+
+**Carte déjà préparée avec le type 0x83 ?** On peut changer le type sans rien
+réinstaller (LineageOS, `adb root`) :
+
+```sh
+adb shell sm list-volumes public            # repérer public:179,…
+adb shell sm unmount public:179,1           # pour chaque volume de la carte
+adb shell "printf '\\332' | dd of=/dev/block/mmcblk0 bs=1 seek=450 conv=notrunc && sync"
+adb shell blockdev --rereadpt /dev/block/mmcblk0
+adb reboot
+```
+
+(octet 450 = type de la 1re partition MBR ; `\332` = 0xDA en octal.) Il ne propose donc plus de « configurer » (formater)
 une carte « non prise en charge ». Le bouton *Formater* reste dans *Paramètres →
 Stockage* : ne jamais l'utiliser sur cette carte.
 
