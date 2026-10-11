@@ -24,3 +24,6 @@ __pycache__/
 # Données du modem (EFS, contiennent l'IMEI) : jamais dans le dépôt
 efs-akatsuki/
 modem_fs*
+# Binaires Sony (analyse locale) et copie de la partition TA : jamais dans le dépôt
+sony-blobs/
+ta-akatsuki/
