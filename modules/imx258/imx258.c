@@ -4,6 +4,7 @@
 #include <linux/acpi.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/gpio/consumer.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
@@ -680,6 +681,7 @@ struct imx258 {
 	struct mutex mutex;
 
 	struct clk *clk;
+	struct gpio_desc *reset_gpio;	/* XZ3 : ligne XCLR (reset) du capteur */
 	struct regulator_bulk_data supplies[IMX258_NUM_SUPPLIES];
 };
 
@@ -1128,9 +1130,16 @@ static int imx258_power_on(struct device *dev)
 	if (ret) {
 		dev_err(dev, "failed to enable clock\n");
 		regulator_bulk_disable(IMX258_NUM_SUPPLIES, imx258->supplies);
+		return ret;
 	}
 
-	return ret;
+	/* Sortie de reset après alimentations et horloge (séquence Sony : 1 ms),
+	 * puis attente avant le premier accès I2C. */
+	usleep_range(1000, 2000);
+	gpiod_set_value_cansleep(imx258->reset_gpio, 0);
+	usleep_range(10000, 12000);
+
+	return 0;
 }
 
 static int imx258_power_off(struct device *dev)
@@ -1138,6 +1147,7 @@ static int imx258_power_off(struct device *dev)
 	struct v4l2_subdev *sd = dev_get_drvdata(dev);
 	struct imx258 *imx258 = to_imx258(sd);
 
+	gpiod_set_value_cansleep(imx258->reset_gpio, 1);
 	clk_disable_unprepare(imx258->clk);
 	regulator_bulk_disable(IMX258_NUM_SUPPLIES, imx258->supplies);
 
@@ -1386,6 +1396,15 @@ static int imx258_probe(struct i2c_client *client)
 	if (ret)
 		return dev_err_probe(imx258->dev, ret,
 				     "failed to get regulators\n");
+
+	/* XZ3 : le pilote d'origine ne gère pas la broche de reset (capteur
+	 * laissé en reset, aucune réponse I2C). Maintenue en reset jusqu'à la mise
+	 * sous tension. */
+	imx258->reset_gpio = devm_gpiod_get_optional(imx258->dev, "reset",
+						     GPIOD_OUT_HIGH);
+	if (IS_ERR(imx258->reset_gpio))
+		return dev_err_probe(imx258->dev, PTR_ERR(imx258->reset_gpio),
+				     "failed to get reset gpio\n");
 
 	imx258->clk = devm_v4l2_sensor_clk_get_legacy(imx258->dev, NULL, false,
 						      0);

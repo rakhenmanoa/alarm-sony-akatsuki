@@ -16,6 +16,10 @@
  * i2c_freq_mode 1 ; le DTB mainline met 1 MHz) et L22 (2,7 V, autofocus) allumée en
  * permanence : Sony l'allume avec le capteur, et une puce non alimentée sur le bus
  * partagé (autofocus, EEPROM) peut le bloquer.
+ * Diagnostic (camera-diag) : avec vio et vana allumées en permanence, le bus répond
+ * (EEPROM 0x51, autofocus 0x0c) ; le capteur ne répondait pas car le pilote mainline
+ * ignore reset-gpios (corrigé dans modules/imx258). vio (1,8 V, tensions d'E/S du bus)
+ * est désormais allumée en permanence : sans elle au repos, le bus restait bloqué.
  * Le fichier CamX de Sony (sensormodule.poodle_imx258) ne contient pas les registres
  * du capteur (seulement les modes : 4160x3120, 2100x1556…) : le pilote mainline sert.
  * Modèle de description : sdm845-db845c-navigation-mezzanine.dtso.
@@ -36,6 +40,10 @@
 
 &{/soc@0/cci@ac4a000} {
 	status = "okay";
+};
+
+&{/cam-vio-reagulator} {
+	regulator-always-on;	/* 1,8 V : E/S du bus caméra (EEPROM, autofocus) */
 };
 
 &{/soc@0/rsc@179c0000/regulators-0/ldo22} {
