@@ -213,7 +213,7 @@ class MiscTA:
 
 
 def apercu(d):
-    if d and all(32 <= x < 127 for x in d.rstrip(b"\0")):
+    if d.rstrip(b"\0") and all(32 <= x < 127 for x in d.rstrip(b"\0")):
         t = d.rstrip(b"\0").decode("ascii")
         return repr(t[:60]) + (" …" if len(t) > 60 else "")
     return d[:32].hex(" ") + (" …" if len(d) > 32 else "")
