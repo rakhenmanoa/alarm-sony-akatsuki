@@ -167,10 +167,11 @@ Au 12/10/2026, Arch Linux ARM sur la carte SD (slot B), noyau pmOS 7.1-rc1.
 | Vibreur | ✅ | Haptique du PMI8998 activée dans le DTB (`VIBREUR=1`, `dts/akatsuki-vibreur.dtsi`) |
 | Flash / lampe de poche | ✅ | Module flash du PMI8998 (pilote mainline `leds-qcom-flash`), deux voies d'après l'arbre Sony réunies en `white:flash` (`FLASH=1`, `dts/akatsuki-flash.dtsi`) ; règle udev pour la tuile de Plasma Mobile. Flash synchronisé avec la caméra : pas fait |
 | Bluetooth | ✅ | UART6 à 4 fils, alimentation L7A (`dts/akatsuki-bluetooth.dtsi`) ; firmware `crbtfw21.tlv` **de Sony** ; `hci_uart` modifié : veille IBS désactivée côté hôte, commande 0x204b ignorée ([modules/bt-qca](modules/bt-qca)) — `installer-bluetooth.sh`. Contrôleur actif, appairage et audio à tester |
-| Horloge (RTC) | ⏳ | Heure fausse au démarrage ; contournement : NTP (`timedatectl set-ntp true`) |
 | Caméra avant (IMX258) | ✅ | Capteur identifié dans les fichiers CamX de Sony ; pilote mainline imx258 + correctif de la broche de reset, CAMSS (CSIPHY2) et bus CCI1 (0x1a, vio allumée) décrits dans le DTB (`CAMERA=1`) ; plasma-camera via libcamera |
 | Caméra arrière (IMX400) | ⏳ | Pas de pilote Linux ; registres absents des fichiers CamX de Sony |
-| Capteurs, rotation, GPS, vidéo | ⏳ | Pas commencés (`venus.mbn` fait redémarrer le téléphone : non installé) |
+| Capteurs (accéléromètre, lumière, proximité, boussole) | ✅ | Sur le SLPI : `slpi.mbn` de Sony (`CAPTEURS=1`), hexagonrpcd (AUR) avec la config et l'étalonnage Sony et les fichiers socinfo (MTP, 321), libssc + iio-sensor-proxy ; règle udev pour chercher accéléromètre et proximité — `installer-capteurs.sh`. Sens de la rotation dans Plasma à confirmer |
+| Horloge (RTC) | 🟡 | RTC en lecture seule : écart heure − RTC enregistré et réappliqué au démarrage (`installer-horloge.sh`) ; à valider après un arrêt complet |
+| GPS, vidéo | ⏳ | Pas commencés (`venus.mbn` fait redémarrer le téléphone : non installé) |
 | Lecteur d'empreintes (FPC1145) | 🚫 | Bloqué : d'après l'arbre Sony, Linux ne gère que reset (GPIO 40), interruption (GPIO 121) et alimentation ; le bus SPI et la reconnaissance appartiennent à TrustZone (application FPC fermée, non chargeable par le noyau mainline), aucun pilote libre (noyau, libfprint). Seule piste : l'interruption « doigt posé » comme bouton |
 
 ## Crédits
