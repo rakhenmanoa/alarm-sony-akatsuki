@@ -10,6 +10,7 @@
 #
 # Sans fragment, tous les fragments de dts/ (écran-charge, reboot-mode, mémoire Sony, modem-wifi) sont utilisés.
 # ECRAN=dsi ajoute akatsuki-ecran-dsi.dtsi et akatsuki-tactile.dtsi (vrai écran et tactile, modules requis).
+# AUDIO=1 ajoute akatsuki-audio.dtsi (codec WCD9340, haut-parleurs WSA8815).
 #
 # Exemple :
 #   scripts/build-dtb.sh x/boot/dtbs/qcom/sdm845-sony-xperia-tama-akatsuki.dtb \
@@ -27,6 +28,7 @@ in="$1"; out="$2"; shift 2
 [ "$#" -gt 0 ] || set -- "$here/../dts/akatsuki-ecran-charge.dtsi" "$here/../dts/akatsuki-reboot-mode.dtsi" "$here/../dts/akatsuki-memoire-sony.dtsi" "$here/../dts/akatsuki-modem-wifi.dtsi"
 # ECRAN=dsi : vrai écran (panneau LGD, DSC) à la place du framebuffer simple
 if [ "${ECRAN:-}" = dsi ]; then set -- "$@" "$here/../dts/akatsuki-ecran-dsi.dtsi" "$here/../dts/akatsuki-tactile.dtsi"; fi
+if [ "${AUDIO:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-audio.dtsi"; fi
 
 command -v dtc >/dev/null 2>&1 || { echo "Erreur : dtc est requis (paquet dtc)." >&2; exit 2; }
 [ -f "$in" ] || { echo "Erreur : fichier introuvable : $in" >&2; exit 2; }

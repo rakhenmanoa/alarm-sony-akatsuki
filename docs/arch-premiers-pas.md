@@ -179,3 +179,12 @@ cat /sys/class/power_supply/qcom-battery/temp          # dixièmes de °C
 
 Premier relevé : 99 %, 4,252 V, −2,4 mA (fin de charge), 32 °C ; chargeur en USB
 standard (SDP, 500 mA max), santé « Good ».
+
+## Son (12/10/2026, essai)
+
+Matériel relevé sous LineageOS (`scripts/releve-audio-adb.sh`) : codec **WCD9340**
+sur le SLIMbus de l'ADSP, deux amplis **WSA8815** sur le SoundWire du codec (pas
+d'ampli sur I2C), micros numériques DMIC0 et DMIC3, pas de prise jack (casque par
+l'USB-C). Même matériel que le Lenovo Yoga C630 : [`dts/akatsuki-audio.dtsi`](../dts/akatsuki-audio.dtsi)
+reprend sa description. Image : `ECRAN=dsi AUDIO=1 SANS_VERROU=1 test-boot/build.sh …`.
+Essai des haut-parleurs : [`scripts/audio-essai.sh`](../scripts/audio-essai.sh).

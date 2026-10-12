@@ -1,0 +1,205 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Son du Xperia XZ3 : codec WCD9340 (« Tavil ») sur le SLIMbus de l'ADSP, deux
+ * amplis WSA8815 (haut-parleurs gauche et droit) sur le SoundWire du codec.
+ *
+ * Relevé sous LineageOS (arbre matériel du noyau Sony, 12/10/2026) :
+ *   - WCD9340 : reset GPIO 64, interruption GPIO 54, horloge LN_BB_CLK2 (9,6 MHz),
+ *     toutes les alimentations sur S4A 1,8 V, micbias 1 à 4 à 1,8 V ;
+ *   - WSA881x : ids 0x2117021[34] (WSA8815, n° 3 et 4), arrêt (SD_N, actif bas) sur
+ *     les GPIO 2 (gauche) et 3 (droit) du codec, soit 1 et 2 en numérotation mainline ;
+ *   - routage Sony : « SpkrLeft IN » ← « SPK1 OUT », « SpkrRight IN » ← « SPK2 OUT »,
+ *     micros numériques DMIC0 (MIC BIAS1) et DMIC3 (MIC BIAS4), micro du casque
+ *     AMIC2 (MIC BIAS2, par l'USB-C : commutation pas encore décrite).
+ * Même matériel que le Lenovo Yoga C630 (sdm850-lenovo-yoga-c630.dts) : description
+ * reprise de celui-ci et de sdm845-wcd9340.dtsi.
+ */
+
+&{/soc@0/pinctrl@3400000} {
+	wcd_intr_default: wcd-intr-default-state {
+		pins = "gpio54";
+		function = "gpio";
+		bias-pull-down;
+		drive-strength = <2>;
+	};
+};
+
+&{/soc@0/slim-ngd@171c0000} {
+	status = "okay";
+
+	slim@1 {
+		reg = <1>;
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		wcd9340_ifd: ifd@0,0 {
+			compatible = "slim217,250";
+			reg = <0 0>;
+		};
+
+		wcd9340: codec@1,0 {
+			compatible = "slim217,250";
+			reg = <1 0>;
+			slim-ifc-dev = <&wcd9340_ifd>;
+			#sound-dai-cells = <1>;
+
+			interrupts-extended = <&{/soc@0/pinctrl@3400000} 54 4>;	/* IRQ_TYPE_LEVEL_HIGH */
+			interrupt-controller;
+			#interrupt-cells = <1>;
+
+			clock-names = "extclk";
+			clocks = <&{/soc@0/rsc@179c0000/clock-controller} 2>;	/* RPMH_LN_BB_CLK2 */
+			#clock-cells = <0>;
+			clock-frequency = <9600000>;
+			clock-output-names = "mclk";
+
+			pinctrl-0 = <&wcd_intr_default>;
+			pinctrl-names = "default";
+
+			reset-gpios = <&{/soc@0/pinctrl@3400000} 64 0>;	/* GPIO_ACTIVE_HIGH */
+			vdd-buck-supply = <&{/pm8998-smps4}>;
+			vdd-buck-sido-supply = <&{/pm8998-smps4}>;
+			vdd-tx-supply = <&{/pm8998-smps4}>;
+			vdd-rx-supply = <&{/pm8998-smps4}>;
+			vdd-io-supply = <&{/pm8998-smps4}>;
+
+			qcom,micbias1-microvolt = <1800000>;
+			qcom,micbias2-microvolt = <1800000>;
+			qcom,micbias3-microvolt = <1800000>;
+			qcom,micbias4-microvolt = <1800000>;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			wcdgpio: gpio-controller@42 {
+				compatible = "qcom,wcd9340-gpio";
+				gpio-controller;
+				#gpio-cells = <2>;
+				reg = <0x42 0x2>;
+			};
+
+			swm: soundwire@c85 {
+				compatible = "qcom,soundwire-v1.3.0";
+				reg = <0xc85 0x40>;
+				interrupts-extended = <&wcd9340 20>;
+
+				qcom,dout-ports = <6>;
+				qcom,din-ports = <2>;
+				qcom,ports-sinterval-low = /bits/ 8 <0x07 0x1f 0x3f 0x7 0x1f 0x3f 0x0f 0x0f>;
+				qcom,ports-offset1 = /bits/ 8 <0x01 0x02 0x0c 0x6 0x12 0x0d 0x07 0x0a>;
+				qcom,ports-offset2 = /bits/ 8 <0x00 0x00 0x1f 0x00 0x00 0x1f 0x00 0x00>;
+
+				#sound-dai-cells = <1>;
+				clocks = <&wcd9340>;
+				clock-names = "iface";
+				#address-cells = <2>;
+				#size-cells = <0>;
+
+				left_spkr: speaker@0,3 {
+					compatible = "sdw10217211000";	/* WSA8815 */
+					reg = <0 3>;
+					powerdown-gpios = <&wcdgpio 1 1>;	/* GPIO_ACTIVE_LOW */
+					#thermal-sensor-cells = <0>;
+					sound-name-prefix = "SpkrLeft";
+					#sound-dai-cells = <0>;
+				};
+
+				right_spkr: speaker@0,4 {
+					compatible = "sdw10217211000";
+					reg = <0 4>;
+					powerdown-gpios = <&wcdgpio 2 1>;
+					#thermal-sensor-cells = <0>;
+					sound-name-prefix = "SpkrRight";
+					#sound-dai-cells = <0>;
+				};
+			};
+		};
+	};
+};
+
+&{/remoteproc-adsp/glink-edge/apr/service@7/dais} {
+	dai@0 {
+		reg = <0>;	/* MSM_FRONTEND_DAI_MULTIMEDIA1 */
+	};
+
+	dai@1 {
+		reg = <1>;	/* MULTIMEDIA2 */
+	};
+
+	dai@2 {
+		reg = <2>;	/* MULTIMEDIA3 */
+	};
+};
+
+&{/sound} {
+	compatible = "qcom,sdm845-sndcard";
+	model = "Sony-Xperia-XZ3";
+
+	audio-routing =
+		"RX_BIAS", "MCLK",
+		"AMIC2", "MIC BIAS2",
+		"DMIC0", "MIC BIAS1",
+		"DMIC3", "MIC BIAS4",
+		"SpkrLeft IN", "SPK1 OUT",
+		"SpkrRight IN", "SPK2 OUT";
+
+	mm1-dai-link {
+		link-name = "MultiMedia1";
+		cpu {
+			sound-dai = <&{/remoteproc-adsp/glink-edge/apr/service@7/dais} 0>;
+		};
+	};
+
+	mm2-dai-link {
+		link-name = "MultiMedia2";
+		cpu {
+			sound-dai = <&{/remoteproc-adsp/glink-edge/apr/service@7/dais} 1>;
+		};
+	};
+
+	mm3-dai-link {
+		link-name = "MultiMedia3";
+		cpu {
+			sound-dai = <&{/remoteproc-adsp/glink-edge/apr/service@7/dais} 2>;
+		};
+	};
+
+	slim-dai-link {
+		link-name = "SLIM Playback";
+		cpu {
+			sound-dai = <&{/remoteproc-adsp/glink-edge/apr/service@4/dais} 2>;	/* SLIMBUS_0_RX */
+		};
+		platform {
+			sound-dai = <&{/remoteproc-adsp/glink-edge/apr/service@8/routing}>;
+		};
+		codec {
+			sound-dai = <&left_spkr>, <&right_spkr>, <&swm 0>, <&wcd9340 0>;
+		};
+	};
+
+	slimcap-dai-link {
+		link-name = "SLIM Capture";
+		cpu {
+			sound-dai = <&{/remoteproc-adsp/glink-edge/apr/service@4/dais} 3>;	/* SLIMBUS_0_TX */
+		};
+		platform {
+			sound-dai = <&{/remoteproc-adsp/glink-edge/apr/service@8/routing}>;
+		};
+		codec {
+			sound-dai = <&wcd9340 1>;
+		};
+	};
+
+	slim-wcd-dai-link {
+		link-name = "SLIM WCD Playback";
+		cpu {
+			sound-dai = <&{/remoteproc-adsp/glink-edge/apr/service@4/dais} 4>;	/* SLIMBUS_1_RX */
+		};
+		platform {
+			sound-dai = <&{/remoteproc-adsp/glink-edge/apr/service@8/routing}>;
+		};
+		codec {
+			sound-dai = <&wcd9340 2>;
+		};
+	};
+};
