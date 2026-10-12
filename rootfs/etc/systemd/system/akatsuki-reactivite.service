@@ -1,0 +1,11 @@
+[Unit]
+Description=Réglages de réactivité du Xperia XZ3 (CPU, GPU, carte SD)
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/akatsuki-reactivite
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,39 @@
+#!/bin/sh
+# akatsuki-reactivite — Réglages de réactivité du Xperia XZ3 (au démarrage).
+# Le système vit sur la carte micro-SD : c'est souvent elle qui ralentit le
+# lancement des applications. Le processeur et le GPU montaient aussi en
+# fréquence avec retard (relevé du 12/10/2026 : petit cœur à 748 MHz, GPU à
+# 257 MHz au repos, aucune surchauffe).
+#
+#   CPU : schedutil réagit plus vite (rate_limit_us 500) ; petits cœurs ≥ ~1 GHz.
+#   GPU : fréquence minimale relevée d'un cran (moins de saccades au défilement).
+#   Carte SD : ordonnanceur BFQ (priorité aux applications interactives),
+#   lecture anticipée 1 Mio.
+# Coût : un peu plus de consommation. Désactiver :
+#   systemctl disable --now akatsuki-reactivite ; reboot
+set -u
+ecrit() { [ -w "$1" ] && echo "$2" > "$1" 2>/dev/null; }
+
+for p in /sys/devices/system/cpu/cpufreq/policy*; do
+	ecrit "$p/schedutil/rate_limit_us" 500
+done
+# Petits cœurs : plus basse fréquence disponible ≥ 1 GHz
+p0=/sys/devices/system/cpu/cpufreq/policy0
+if [ -r "$p0/scaling_available_frequencies" ]; then
+	f=$(tr ' ' '\n' < "$p0/scaling_available_frequencies" | sort -n | awk '$1 >= 1000000 {print; exit}')
+	[ -n "$f" ] && ecrit "$p0/scaling_min_freq" "$f"
+fi
+
+for g in /sys/class/devfreq/*.gpu; do
+	[ -r "$g/available_frequencies" ] || continue
+	f=$(tr ' ' '\n' < "$g/available_frequencies" | grep . | sort -n | sed -n 2p)
+	[ -n "$f" ] && ecrit "$g/min_freq" "$f"
+done
+
+for q in /sys/block/mmcblk*/queue; do
+	ecrit "$q/scheduler" bfq
+	ecrit "$q/read_ahead_kb" 1024
+done
+
+echo "CPU min : $(cat $p0/scaling_min_freq 2>/dev/null) ; GPU min : $(cat /sys/class/devfreq/*.gpu/min_freq 2>/dev/null) ;" \
+	"SD : $(cat /sys/block/mmcblk0/queue/scheduler 2>/dev/null)"
