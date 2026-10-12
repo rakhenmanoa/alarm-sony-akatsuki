@@ -13,6 +13,11 @@
 #   sensors/config/       ← /vendor/etc/sensors/config
 #   sensors/registry/     ← /mnt/vendor/persist/sensors/registry/registry
 #   sensors/sns_reg.conf  ← /vendor/etc/sensors/sns_reg_config
+#   socinfo/              ← /sys/devices/soc0 d'Android (hw_platform…) : les configs
+#                           JSON de Sony ne s'appliquent que si hw_platform vaut MTP,
+#                           Surf ou QRD et soc_id 321 (SDM845). Sans ces fichiers,
+#                           l'accéléromètre n'apparaissait pas (12/10/2026).
+#                           Valeurs réglables : HW_PLATFORM=… SOC_ID=… etc.
 set -eu
 [ "$(id -u)" -eq 0 ] || { echo "Erreur : lancer en root." >&2; exit 1; }
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -31,6 +36,13 @@ snsc=$(trouve etc-sensors f /sns_reg_config)
 rm -rf "$d/sensors/config" "$d/sensors/registry"
 cp -a "$cfg" "$d/sensors/config"; cp -a "$reg" "$d/sensors/registry"
 install -m 644 "$snsc" "$d/sensors/sns_reg.conf"
+mkdir -p "$d/socinfo"
+printf '%s\n' "${HW_PLATFORM:-MTP}" > "$d/socinfo/hw_platform"
+printf '%s\n' "${SOC_ID:-321}" > "$d/socinfo/soc_id"
+printf '%s\n' "${PLATFORM_SUBTYPE:-Unknown}" > "$d/socinfo/platform_subtype"
+printf '%s\n' "${PLATFORM_SUBTYPE_ID:-0}" > "$d/socinfo/platform_subtype_id"
+printf '%s\n' "${PLATFORM_VERSION:-65536}" > "$d/socinfo/platform_version"
+printf '%s\n' "${REVISION:-2.1}" > "$d/socinfo/revision"
 echo "Fichiers : $(find "$d" -type f | wc -l) dans $d"
 
 pacman -S --needed --noconfirm iio-sensor-proxy
