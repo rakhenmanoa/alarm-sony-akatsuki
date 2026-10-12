@@ -8,10 +8,13 @@
  * que l'hôte ait changé le sien, d'où « Frame reassembly failed (-84) » et
  * « Failed to change controller baudrate » (constaté le 12/10/2026).
  *
- * Polarisation des broches reprise telle quelle de l'arbre matériel Sony :
- * CTS (45) et RX (48) sans tirage, RTS (46) tiré vers le bas, TX (47) tiré vers
- * le haut. L'état « 4pin » de sdm845.dtsi (CTS tiré bas, RX tiré haut, TX libre)
- * empêchait la lecture de la version de la puce (-110).
+ * Polarisation des broches : TX (47) tiré vers le haut et RTS (46) tiré vers le
+ * bas comme chez Sony ; CTS (45) tiré vers le bas et RX (48) vers le haut comme
+ * dans sdm845.dtsi. Avec CTS libre (réglage Sony), le WCN3990 démarre et reçoit
+ * son firmware, mais la première commande suivante échoue (0xfc14 tx timeout).
+ * Hypothèse : en veille profonde la puce lâche sa ligne RTS, notre CTS flotte et bloque
+ * l'émission de l'octet de réveil (le pilote Sony gère ce cas à part, pas le
+ * mainline). Le tirage vers le bas garde CTS actif pendant la veille.
  *
  * Alimentations (relevé Sony : io S3A, xtal S5A, core L7A 1,8 V, pa L17A,
  * ldo L25A) : le pilote mainline n'a que vddio/vddxo/vddrf/vddch0. Le DTB tama
@@ -21,11 +24,18 @@
  */
 &{/soc@0/pinctrl@3400000} {
 	akatsuki_bt_uart: akatsuki-bt-uart-state {
-		cts-rx-pins {
-			pins = "gpio45", "gpio48";
+		cts-pins {
+			pins = "gpio45";
 			function = "qup6";
 			drive-strength = <2>;
-			bias-disable;
+			bias-pull-down;
+		};
+
+		rx-pins {
+			pins = "gpio48";
+			function = "qup6";
+			drive-strength = <2>;
+			bias-pull-up;
 		};
 
 		rts-pins {
