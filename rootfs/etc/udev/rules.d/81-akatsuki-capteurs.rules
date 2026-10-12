@@ -4,4 +4,7 @@
 # proximité (TMD2725) n'étaient jamais cherchés (12/10/2026).
 # Un seul périphérique, pour ne pas voir chaque capteur deux fois (adsp + sdsp).
 SUBSYSTEM=="misc", KERNEL=="fastrpc-sdsp", ENV{IIO_SENSOR_PROXY_TYPE}="ssc-accel ssc-light ssc-proximity ssc-compass"
+# Axes de l'accéléromètre : rotation inversée sans correction (12/10/2026) ; essai en cours,
+# on retourne l'axe X (gauche/droite). Sinon : "-1, 0, 0; 0, -1, 0; 0, 0, 1".
+SUBSYSTEM=="misc", KERNEL=="fastrpc-sdsp", ENV{ACCEL_MOUNT_MATRIX}="-1, 0, 0; 0, 1, 0; 0, 0, 1"
 SUBSYSTEM=="misc", KERNEL=="fastrpc-adsp", ENV{IIO_SENSOR_PROXY_TYPE}=""
