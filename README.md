@@ -166,6 +166,7 @@ Au 12/10/2026, Arch Linux ARM sur la carte SD (slot B), noyau pmOS 7.1-rc1.
 | Adresse MAC réelle (Wi-Fi, Bluetooth) | ✅ | Lues dans la TA (unités 0xa00, 0xa08, `ta-mac.py`), passées au DTB à la construction (`WLAN_MAC=… BT_MAC=…`) : jamais dans le dépôt, images personnelles |
 | Vibreur | ✅ | Haptique du PMI8998 activée dans le DTB (`VIBREUR=1`, `dts/akatsuki-vibreur.dtsi`) |
 | Flash / lampe de poche | ✅ | Module flash du PMI8998 (pilote mainline `leds-qcom-flash`), deux voies d'après l'arbre Sony réunies en `white:flash` (`FLASH=1`, `dts/akatsuki-flash.dtsi`) ; règle udev pour la tuile de Plasma Mobile. Flash synchronisé avec la caméra : pas fait |
+| LED de notification (RVB) | ✅ | LPG du PMI8998 (pilote mainline `leds-qcom-lpg`), rouge/vert/bleu sur les voies 5/4/3 d'après l'arbre Sony → `rgb:status` (`dts/akatsuki-led.dtsi`, avec `FLASH=1`) ; pas encore reliée aux notifications |
 | Bluetooth | ✅ | UART6 à 4 fils, alimentation L7A (`dts/akatsuki-bluetooth.dtsi`) ; firmware `crbtfw21.tlv` **de Sony** ; `hci_uart` modifié : veille IBS désactivée côté hôte, commande 0x204b ignorée ([modules/bt-qca](modules/bt-qca)) — `installer-bluetooth.sh`. Contrôleur actif, appairage et audio à tester |
 | Caméra avant (IMX258) | ✅ | Capteur identifié dans les fichiers CamX de Sony ; pilote mainline imx258 + correctif de la broche de reset, CAMSS (CSIPHY2) et bus CCI1 (0x1a, vio allumée) décrits dans le DTB (`CAMERA=1`) ; plasma-camera via libcamera |
 | Caméra arrière (IMX400) | ⏳ | Pas de pilote Linux ; registres absents des fichiers CamX de Sony |
