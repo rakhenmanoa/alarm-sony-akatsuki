@@ -64,7 +64,7 @@ install -D -m 644 /root/panel-lgd-lh599qh3-edb1.ko $M/updates/panel-lgd-lh599qh3
 depmod -a
 ```
 
-## Tactile (12/10/2026)
+## Tactile — ✅ fonctionne (12/10/2026)
 
 Pilote officiel `atmel_mxt_ts` (absent de la configuration pmOS) compilé en module :
 [`modules/atmel_mxt_ts/`](../modules/atmel_mxt_ts/). DTB :
@@ -77,4 +77,15 @@ insmod /root/atmel_mxt_ts.ko
 dmesg | grep -i mxt
 cat /proc/bus/input/devices | grep -A4 -i atmel
 pacman -S --needed evtest && evtest      # toucher l'écran
+```
+
+**Validé le 12/10/2026** : `atmel_mxt_ts` se charge, le maXTouch répond sur l'I2C5 et
+`evtest` reçoit les positions du doigt.
+
+Chargement automatique des deux modules :
+
+```sh
+M=/usr/lib/modules/$(uname -r)
+install -D -m 644 /root/panel-lgd-lh599qh3-edb1.ko /root/atmel_mxt_ts.ko -t $M/updates/
+depmod -a
 ```
