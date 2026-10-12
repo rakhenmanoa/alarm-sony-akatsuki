@@ -163,8 +163,9 @@ Au 12/10/2026, Arch Linux ARM sur la carte SD (slot B), noyau pmOS 7.1-rc1.
 | Haut-parleurs | ✅ | Matériel relevé dans l'arbre Sony sous LineageOS (WCD9340 + 2 × WSA8815, comme le Lenovo Yoga C630) → `dts/akatsuki-audio.dtsi` (`AUDIO=1`) ; profil UCM et réglage PipeWire pour l'ADSP (`installer-audio.sh`) ; son dans Plasma/Firefox validé |
 | Micro | ✅ | Micro numérique DMIC0 (MIC BIAS1) d'après l'arbre Sony, dans le profil UCM |
 | Casque USB-C | ⏳ | Commutation de la prise USB-C pas encore décrite |
-| Adresse MAC réelle (Wi-Fi, Bluetooth) | ⏳ | Trouvée dans la TA (unités 0xa00, 0xa08), pas encore appliquée |
-| Bluetooth | ⏳ | Firmware `crnv21.bin` récupéré, pas testé |
+| Adresse MAC réelle (Wi-Fi, Bluetooth) | ✅ | Lues dans la TA (unités 0xa00, 0xa08, `ta-mac.py`), passées au DTB à la construction (`WLAN_MAC=… BT_MAC=…`) : jamais dans le dépôt, images personnelles |
+| Vibreur | ✅ | Haptique du PMI8998 activée dans le DTB (`VIBREUR=1`, `dts/akatsuki-vibreur.dtsi`) |
+| Bluetooth | ✅ | UART6 à 4 fils, alimentation L7A (`dts/akatsuki-bluetooth.dtsi`) ; firmware `crbtfw21.tlv` **de Sony** ; `hci_uart` modifié : veille IBS désactivée côté hôte, commande 0x204b ignorée ([modules/bt-qca](modules/bt-qca)) — `installer-bluetooth.sh`. Contrôleur actif, appairage et audio à tester |
 | Horloge (RTC) | ⏳ | Heure fausse au démarrage ; contournement : NTP (`timedatectl set-ntp true`) |
 | Caméra avant (IMX258) | ✅ | Capteur identifié dans les fichiers CamX de Sony ; pilote mainline imx258 + correctif de la broche de reset, CAMSS (CSIPHY2) et bus CCI1 (0x1a, vio allumée) décrits dans le DTB (`CAMERA=1`) ; plasma-camera via libcamera |
 | Caméra arrière (IMX400) | ⏳ | Pas de pilote Linux ; registres absents des fichiers CamX de Sony |

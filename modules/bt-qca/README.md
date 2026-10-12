@@ -24,6 +24,12 @@ plus d'octet de réveil) qui débloque la puce. Ensuite, l'initialisation s'arr�
 sur `unexpected cc 0x204b length: 1 < 3` / `Opcode 0x204b failed: -38`, d'où
 `qca_broken_le_tx_power`.
 
+Avec le firmware `crbtfw21.tlv` de linux-firmware (20260916), l'étape suivante
+échouait aussi (`Opcode 0x2031 failed: -56`, LE Set Default PHY). Avec celui de
+Sony (`/vendor/bt_firmware/image/crbtfw21.tlv`), le contrôleur démarre :
+`bluetoothctl show` → `Powered: yes`, adresse de la TA (12/10/2026).
+Installation complète : [`scripts/installer-bluetooth.sh`](../../scripts/installer-bluetooth.sh).
+
 ## Construction
 
 ```sh
@@ -42,10 +48,10 @@ Marvell).
 d=/usr/lib/modules/$(uname -r)/updates; mkdir -p $d
 install -m 644 btqca.ko hci_uart.ko $d/ && depmod -a
 modinfo -n hci_uart        # doit afficher …/updates/hci_uart.ko
-cat > /etc/modprobe.d/akatsuki-bluetooth.conf <<'E'
-options hci_uart qca_no_ibs=1 qca_broken_le_tx_power=1
-E
+install -m 644 rootfs/etc/modprobe.d/akatsuki-bluetooth.conf /etc/modprobe.d/
 reboot
 ```
 
 Retour arrière : `rm $d/btqca.ko $d/hci_uart.ko /etc/modprobe.d/akatsuki-bluetooth.conf && depmod -a`.
+
+Ou tout en une fois : `SONY_FW=… KO=… scripts/installer-bluetooth.sh`.
