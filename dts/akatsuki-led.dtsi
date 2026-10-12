@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * LED de notification (RVB, en haut de la façade) du Xperia XZ3 : LPG du PMI8998,
+ * pilote mainline leds-qcom-lpg (LED multicolore).
+ *
+ * Relevé Sony (qcom,leds@d000, LineageOS 12/10/2026) : rouge sur la voie LPG 5
+ * (0xb500), vert sur la 4 (0xb400), bleu sur la 3 (0xb300), 12 mA max chacune.
+ * Même câblage que le OnePlus 6 (sdm845-oneplus-enchilada.dts).
+ */
+&{/soc@0/spmi@c440000/pmic@3/pwm} {
+	status = "okay";
+
+	multi-led {
+		color = <9>;			/* LED_COLOR_ID_RGB */
+		function = "status";
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		led@3 {
+			reg = <3>;
+			color = <3>;		/* LED_COLOR_ID_BLUE */
+		};
+
+		led@4 {
+			reg = <4>;
+			color = <2>;		/* LED_COLOR_ID_GREEN */
+		};
+
+		led@5 {
+			reg = <5>;
+			color = <1>;		/* LED_COLOR_ID_RED */
+		};
+	};
+};
