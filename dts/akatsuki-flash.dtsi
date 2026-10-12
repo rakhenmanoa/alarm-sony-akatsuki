@@ -4,10 +4,14 @@
  * pilote mainline leds-qcom-flash.
  *
  * Relevé Sony (qcom,qpnp-flash-led-v2, LineageOS 12/10/2026) : deux voies utilisées,
- * id 0 et 1 (sources 1 et 2 en mainline), la troisième désactivée ;
- * flash 1 000 mA max (625 mA par défaut), durée 1 280 ms ;
- * lampe (torch) 200 mA max (120 mA par défaut) par voie.
- * Même description que le SHIFT6mq (sdm845-shift-axolotl.dts).
+ * id 0 et 1 (sources 1 et 2 en mainline), allumées ensemble (led_switch_0, masque
+ * 0x03), la troisième désactivée ; par voie : flash 1 000 mA max, 1 280 ms ;
+ * lampe 120 mA par défaut, 200 mA max.
+ *
+ * Une seule LED Linux pour les deux voies (le pilote répartit le courant) :
+ * « white:flash », le nom que cherche la lampe de poche de Plasma Mobile (*:flash).
+ * Lampe limitée à 2 × 120 mA (valeur par défaut de Sony : la LED chauffe moins).
+ * Validé le 12/10/2026 (deux LED séparées, white:flash-0/1).
  */
 &{/soc@0/spmi@c440000/pmic@3/led-controller@d300} {
 	status = "okay";
@@ -15,20 +19,9 @@
 	led-0 {
 		function = "flash";
 		color = <0>;			/* LED_COLOR_ID_WHITE */
-		function-enumerator = <0>;
-		led-sources = <1>;
-		led-max-microamp = <200000>;
-		flash-max-microamp = <1000000>;
-		flash-max-timeout-us = <1280000>;
-	};
-
-	led-1 {
-		function = "flash";
-		color = <0>;
-		function-enumerator = <1>;
-		led-sources = <2>;
-		led-max-microamp = <200000>;
-		flash-max-microamp = <1000000>;
+		led-sources = <1>, <2>;
+		led-max-microamp = <240000>;
+		flash-max-microamp = <2000000>;
 		flash-max-timeout-us = <1280000>;
 	};
 };
