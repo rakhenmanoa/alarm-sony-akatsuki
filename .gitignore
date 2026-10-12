@@ -27,3 +27,5 @@ modem_fs*
 # Binaires Sony (analyse locale) et copie de la partition TA : jamais dans le dépôt
 sony-blobs/
 ta-akatsuki/
+audio-akatsuki/
+audio-akatsuki.tar.gz
