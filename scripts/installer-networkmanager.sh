@@ -10,8 +10,8 @@
 #     est créée si un APN est donné en argument.
 #
 # Usage : scripts/installer-networkmanager.sh [APN]        (ex. : internet)
-# Retour arrière : systemctl disable --now NetworkManager ; rm /etc/iwd/main.conf.nm ;
-#                  réinstaller rootfs/etc/iwd/main.conf ; systemctl restart iwd
+# Retour arrière : systemctl disable --now NetworkManager ;
+#                  install -m 644 rootfs/etc/iwd/main.conf /etc/iwd/ ; systemctl restart iwd
 
 set -eu
 die() { echo "Erreur : $*" >&2; exit 1; }
