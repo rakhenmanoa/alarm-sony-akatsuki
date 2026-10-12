@@ -17,7 +17,9 @@
 #                           JSON de Sony ne s'appliquent que si hw_platform vaut MTP,
 #                           Surf ou QRD et soc_id 321 (SDM845). Sans ces fichiers,
 #                           l'accéléromètre n'apparaissait pas (12/10/2026).
-#                           Valeurs réglables : HW_PLATFORM=… SOC_ID=… etc.
+#                           Valeurs par défaut = celles de LineageOS (MTP, Unknown,
+#                           0, 65536, 2.1, 321 ; relevé du 12/10/2026), réglables
+#                           par HW_PLATFORM=… SOC_ID=… etc.
 set -eu
 [ "$(id -u)" -eq 0 ] || { echo "Erreur : lancer en root." >&2; exit 1; }
 here="$(cd "$(dirname "$0")" && pwd)"
