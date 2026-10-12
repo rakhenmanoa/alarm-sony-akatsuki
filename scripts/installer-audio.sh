@@ -10,6 +10,9 @@ pacman -S --needed --noconfirm alsa-ucm-conf alsa-utils pipewire pipewire-pulse 
 install -d "$U/Sony/akatsuki" "$U/conf.d/sdm845"
 install -m 644 "$here/../rootfs$U/Sony/akatsuki/akatsuki.conf" "$here/../rootfs$U/Sony/akatsuki/HiFi.conf" "$U/Sony/akatsuki/"
 ln -sf ../../Sony/akatsuki/akatsuki.conf "$U/conf.d/sdm845/Sony-Xperia-XZ3.conf"
+# PipeWire : périodes adaptées à l'ADSP (sinon « Error queuing playback buffer -16 »)
+install -D -m 644 "$here/../rootfs/etc/wireplumber/wireplumber.conf.d/51-akatsuki-q6asm.conf" \
+	/etc/wireplumber/wireplumber.conf.d/51-akatsuki-q6asm.conf
 card="$(awk '/Sony-Xperia-XZ3/ { print $1; exit }' /proc/asound/cards)"
 [ -n "$card" ] && alsaucm -c "$card" list _verbs || echo "Carte Sony-Xperia-XZ3 absente : démarrer l'image AUDIO=1."
 echo "Terminé. Redémarrer la session (ou le téléphone) pour que PipeWire relise le profil."
