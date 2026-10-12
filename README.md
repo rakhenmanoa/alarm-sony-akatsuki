@@ -172,7 +172,7 @@ Au 12/10/2026, Arch Linux ARM sur la carte SD (slot B), noyau pmOS 7.1-rc1.
 | SIM (verrouillage Sony) | ✅ | Vrai service MiscTA qui lit une copie de la partition TA (format relevé dans les binaires Sony) |
 | SMS | ✅ | ModemManager (QRTR, plugin `qcom-soc`) |
 | Données mobiles | 🟡 | Connexion ModemManager OK (`qmapmux0.0`) ; adresse IP à régler à la main, à automatiser (NetworkManager) |
-| Appels | ⏳ | Pas encore testés |
+| Appels (voix) | ✅ | plasma-dialer (AUR) ; voix du modem reliée au SLIMbus dans l'ADSP (services q6voice activés dans le DTB, PCM VoiceMMode1 « sans hôte » démarré par `voix-hostless.py`), branché automatiquement par `akatsuki-appel-son.service` |
 | Haut-parleurs | ✅ | Matériel relevé dans l'arbre Sony sous LineageOS (WCD9340 + 2 × WSA8815, comme le Lenovo Yoga C630) → `dts/akatsuki-audio.dtsi` (`AUDIO=1`) ; profil UCM et réglage PipeWire pour l'ADSP (`installer-audio.sh`) ; son dans Plasma/Firefox validé |
 | Micro | ✅ | Micro numérique DMIC0 (MIC BIAS1) d'après l'arbre Sony, dans le profil UCM |
 | Casque USB-C | ⏳ | Commutation de la prise USB-C pas encore décrite |

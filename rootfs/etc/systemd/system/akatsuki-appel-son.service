@@ -1,0 +1,15 @@
+# Son des appels du Xperia XZ3 : relie la voix du modem aux haut-parleurs et au micro
+# dans l'ADSP pendant chaque appel (scripts/appel-son.sh, appel-essai.sh,
+# voix-hostless.py ; DTB avec les services voix, boot-arch-appels.img).
+[Unit]
+Description=Son des appels du Xperia XZ3
+After=ModemManager.service sound.target
+Wants=ModemManager.service
+
+[Service]
+ExecStart=/usr/local/bin/appel-son.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
