@@ -24,7 +24,7 @@ start)
 	c "'SLIMBUS_0_RX Voice Mixer VoiceMMode1'" 1
 	c "'VoiceMMode1 Capture Mixer SLIMBUS_0_TX'" 1
 	mkdir -p $P
-	for debit in 8000 16000 48000; do
+	for debit in 8000; do
 		python3 "$here/voix-hostless.py" "hw:$card,$dev" $debit > $P/voix.log 2>&1 & echo $! > $P/voix.pid
 		sleep 2
 		if kill -0 "$(cat $P/voix.pid)" 2>/dev/null; then

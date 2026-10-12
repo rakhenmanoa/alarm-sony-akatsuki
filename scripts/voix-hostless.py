@@ -29,6 +29,21 @@ def ouvrir(dev, flux, debit):
                                1, debit, 0, 500000)
     if r < 0:
         sys.exit("réglage %s : %s" % (dev, lib.snd_strerror(r).decode()))
+    # Pas de données : désactiver la détection de sous-alimentation (sinon le
+    # démarrage échoue aussitôt avec « Broken pipe »).
+    sw = ctypes.c_void_p()
+    lib.snd_pcm_sw_params_malloc(ctypes.byref(sw))
+    lib.snd_pcm_sw_params_current(h, sw)
+    borne = ctypes.c_ulong()
+    lib.snd_pcm_sw_params_get_boundary(sw, ctypes.byref(borne))
+    lib.snd_pcm_sw_params_set_stop_threshold(h, sw, borne)
+    lib.snd_pcm_sw_params_set_start_threshold(h, sw, borne)
+    lib.snd_pcm_sw_params_set_silence_threshold(h, sw, ctypes.c_ulong(0))
+    lib.snd_pcm_sw_params_set_silence_size(h, sw, borne)
+    r = lib.snd_pcm_sw_params(h, sw)
+    lib.snd_pcm_sw_params_free(sw)
+    if r < 0:
+        sys.exit("réglage logiciel %s : %s" % (dev, lib.snd_strerror(r).decode()))
     r = lib.snd_pcm_prepare(h)
     if r < 0:
         sys.exit("préparation %s : %s" % (dev, lib.snd_strerror(r).decode()))
@@ -41,8 +56,8 @@ def ouvrir(dev, flux, debit):
 def main():
     dev = sys.argv[1] if len(sys.argv) > 1 else "hw:0,6"
     debit = int(sys.argv[2]) if len(sys.argv) > 2 else 8000
-    lecture = ouvrir(dev, SND_PCM_STREAM_PLAYBACK, debit)
     capture = ouvrir(dev, SND_PCM_STREAM_CAPTURE, debit)
+    lecture = ouvrir(dev, SND_PCM_STREAM_PLAYBACK, debit)
     print("Session voix démarrée sur %s (%d Hz)." % (dev, debit), flush=True)
     fin = []
     signal.signal(signal.SIGTERM, lambda *a: fin.append(1))
