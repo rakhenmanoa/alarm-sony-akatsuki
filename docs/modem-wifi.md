@@ -290,3 +290,13 @@ priorité basse (`Metric=2048`) pour que le Wi-Fi soit la route par défaut.
 **Validé le 11/10/2026** : après `installer-demarrage-auto.sh` et un redémarrage,
 `systemctl --failed` vide, `akatsuki-modem` actif, `wlan0` reconnecté seul (iwd),
 route par défaut par le Wi-Fi (métrique 306, USB en 2048), internet sans le PC.
+
+### Ordre de démarrage (12/10/2026)
+
+Après l'ajout de l'écran et du GPU au démarrage, le modem plantait pendant son
+initialisation (`fatal error received: SFR Init: wdog or kernel error suspected`,
+puis `type watchdog`), ~1 s après `now up`, et la partie Wi-Fi restait inutilisable
+(`failed to unmap msa permissions`, `could not probe fw`) jusqu'au redémarrage.
+Démarré une fois le reste en place, il tient. `akatsuki-modem.service` attend donc
+`card0-DSI-1` et l'ADSP/CDSP « running » (40 s au plus) + 5 s. **Validé** : plus de
+plantage, Wi-Fi connecté après le démarrage.
