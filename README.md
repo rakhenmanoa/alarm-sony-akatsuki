@@ -170,6 +170,7 @@ Au 12/10/2026, Arch Linux ARM sur la carte SD (slot B), noyau pmOS 7.1-rc1.
 | Caméra avant (IMX258) | ✅ | Capteur identifié dans les fichiers CamX de Sony ; pilote mainline imx258 + correctif de la broche de reset, CAMSS (CSIPHY2) et bus CCI1 (0x1a, vio allumée) décrits dans le DTB (`CAMERA=1`) ; plasma-camera via libcamera |
 | Caméra arrière (IMX400) | ⏳ | Pas de pilote Linux ; registres absents des fichiers CamX de Sony |
 | Capteurs, rotation, GPS, vidéo | ⏳ | Pas commencés (`venus.mbn` fait redémarrer le téléphone : non installé) |
+| Lecteur d'empreintes (FPC1145) | 🚫 | Bloqué : d'après l'arbre Sony, Linux ne gère que reset (GPIO 40), interruption (GPIO 121) et alimentation ; le bus SPI et la reconnaissance appartiennent à TrustZone (application FPC fermée, non chargeable par le noyau mainline), aucun pilote libre (noyau, libfprint). Seule piste : l'interruption « doigt posé » comme bouton |
 
 ## Crédits
 
