@@ -9,10 +9,15 @@ ConditionPathExists=/var/lib/rmtfs/modem_fs1
 ConditionPathExists=/usr/lib/firmware/qcom/sdm845/Sony/tama/modem.mbn
 
 [Service]
+TimeoutStartSec=90
 # IPA : normalement liée au démarrage ; sinon, on la lie ici (erreur ignorée).
 ExecStartPre=-/bin/sh -c '[ -e /sys/bus/platform/drivers/ipa/1e40000.ipa ] || echo 1e40000.ipa > /sys/bus/platform/drivers/ipa/bind'
-# Laisse aux services Sony le temps de s'annoncer sur le bus QRTR.
-ExecStartPre=/bin/sleep 2
+# Attendre que le reste du démarrage soit calme : écran/GPU (card0-DSI-1) et
+# ADSP/CDSP en route (« running »), au plus 40 s, puis 5 s de marge. Démarré en
+# même temps qu'eux, le modem plante pendant son initialisation (« SFR Init: wdog
+# or kernel error suspected », constaté le 12/10/2026) et la partie Wi-Fi reste
+# inutilisable jusqu'au redémarrage suivant.
+ExecStartPre=/bin/sh -c 'for i in $$(seq 40); do [ -e /sys/class/drm/card0-DSI-1 ] && ! grep -qv running /sys/class/remoteproc/remoteproc[01]/state 2>/dev/null && break; sleep 1; done; sleep 5'
 ExecStart=/usr/local/bin/rmtfs -o /var/lib/rmtfs -s
 Restart=always
 RestartSec=5
