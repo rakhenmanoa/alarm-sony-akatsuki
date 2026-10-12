@@ -3,9 +3,9 @@
 **Arch Linux ARM** sur le Sony Xperia XZ3 (H8416 / H9436 / H9493, nom de code *akatsuki*,
 SoC Snapdragon 845), avec un noyau mainline.
 
-postmarketOS sert de première étape pour valider le démarrage (noyau, DTB, `boot.img`,
-carte SD) grâce à son shell de débogage par USB ; le rootfs est ensuite remplacé par
-Arch Linux ARM.
+Le noyau est celui de postmarketOS (`linux-postmarketos-qcom-sdm845`), avec un DTB
+corrigé, dans un `boot.img` démarré depuis le slot B ; le système (Arch Linux ARM) est
+sur la carte micro-SD, LineageOS reste sur le slot A.
 
 Ce projet reprend le travail de **Petr Hodina** (phodina), qui a fait démarrer le XZ3
 sur noyau mainline en 2023 (postmarketOS) puis en 2026 (Mobile NixOS).
@@ -86,20 +86,7 @@ Repris du portage Mobile NixOS (famille `sdm845-mainline`) :
 | DTB mainline | `qcom/sdm845-sony-xperia-tama-akatsuki.dtb` |
 | Slots | A/B |
 
-## Piste 1 — postmarketOS
-
-```sh
-cp -r pmos/* "$(pmbootstrap config aports)"/device/testing/
-pmbootstrap checksum device-sony-akatsuki firmware-sony-akatsuki
-pmbootstrap init                       # vendor: sony, device: akatsuki
-pmbootstrap initfs hook_add debug-shell
-pmbootstrap install --sdcard=/dev/sdX  # vérifier le /dev avant !
-# téléphone en fastboot (Volume haut + USB, LED bleue), carte SD insérée :
-pmbootstrap flasher boot
-telnet 172.16.42.1                     # shell de débogage par USB
-```
-
-## Piste 2 — Arch Linux ARM
+## Installation — Arch Linux ARM
 
 **Le plus simple pour commencer : [docs/premier-demarrage.md](docs/premier-demarrage.md)**
 (carte SD préparée par script, sans initramfs ni paquet à construire).
