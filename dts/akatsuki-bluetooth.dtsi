@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Bluetooth du Xperia XZ3 (WCN3990 sur l'UART 6) : liaison à 4 fils (TX, RX, CTS,
+ * RTS), comme chez Sony (qupv3_se6_4uart : GPIO 45 à 48) et sur le OnePlus 6.
+ * Le DTB mainline de tama n'active que TX/RX : le contrôle de flux manque, d'où
+ * « Frame reassembly failed (-84) » et « Failed to change controller baudrate »
+ * (constaté le 12/10/2026).
+ */
+&{/soc@0/geniqup@8c0000/serial@898000} {
+	pinctrl-0 = <&{/soc@0/pinctrl@3400000/qup-uart6-4pin-state}>;
+};
