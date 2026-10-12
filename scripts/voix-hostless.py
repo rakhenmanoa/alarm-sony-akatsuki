@@ -30,16 +30,15 @@ def ouvrir(dev, flux, debit):
     if r < 0:
         sys.exit("réglage %s : %s" % (dev, lib.snd_strerror(r).decode()))
     # Pas de données : désactiver la détection de sous-alimentation (sinon le
-    # démarrage échoue aussitôt avec « Broken pipe »).
+    # démarrage échoue aussitôt avec « Broken pipe »). SURTOUT PAS de remplissage
+    # par du silence (silence_size) : ce PCM n'a pas de tampon, le noyau écrirait
+    # à l'adresse 0 (oops dans snd_pcm_playback_silence, pile audio bloquée).
     sw = ctypes.c_void_p()
     lib.snd_pcm_sw_params_malloc(ctypes.byref(sw))
     lib.snd_pcm_sw_params_current(h, sw)
     borne = ctypes.c_ulong()
     lib.snd_pcm_sw_params_get_boundary(sw, ctypes.byref(borne))
     lib.snd_pcm_sw_params_set_stop_threshold(h, sw, borne)
-    lib.snd_pcm_sw_params_set_start_threshold(h, sw, borne)
-    lib.snd_pcm_sw_params_set_silence_threshold(h, sw, ctypes.c_ulong(0))
-    lib.snd_pcm_sw_params_set_silence_size(h, sw, borne)
     r = lib.snd_pcm_sw_params(h, sw)
     lib.snd_pcm_sw_params_free(sw)
     if r < 0:
