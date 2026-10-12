@@ -166,7 +166,7 @@ Au 12/10/2026, Arch Linux ARM sur la carte SD (slot B), noyau pmOS 7.1-rc1.
 | Adresse MAC réelle (Wi-Fi, Bluetooth) | ⏳ | Trouvée dans la TA (unités 0xa00, 0xa08), pas encore appliquée |
 | Bluetooth | ⏳ | Firmware `crnv21.bin` récupéré, pas testé |
 | Horloge (RTC) | ⏳ | Heure fausse au démarrage ; contournement : NTP (`timedatectl set-ntp true`) |
-| Caméra avant (IMX258) | 🟡 | Capteur détecté (CAMSS, CCI1 0x1a) : pilote mainline imx258 + correctif reset ; image à valider (libcamera) |
+| Caméra avant (IMX258) | ✅ | Capteur identifié dans les fichiers CamX de Sony ; pilote mainline imx258 + correctif de la broche de reset, CAMSS (CSIPHY2) et bus CCI1 (0x1a, vio allumée) décrits dans le DTB (`CAMERA=1`) ; plasma-camera via libcamera |
 | Caméra arrière (IMX400) | ⏳ | Pas de pilote Linux ; registres absents des fichiers CamX de Sony |
 | Capteurs, rotation, GPS, vidéo | ⏳ | Pas commencés (`venus.mbn` fait redémarrer le téléphone : non installé) |
 
