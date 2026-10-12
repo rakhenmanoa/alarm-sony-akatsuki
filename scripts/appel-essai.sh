@@ -1,8 +1,8 @@
 #!/bin/sh
 # appel-essai.sh — Essai à la main du son des appels (image boot-arch-appels.img).
 # Pendant un appel décroché : relie la voix du modem au SLIMbus 0 (haut-parleurs,
-# micro DMIC0) dans l'ADSP, puis ouvre le PCM VoiceMMode1 (sans données : son
-# ouverture démarre la session voix de l'ADSP). En root.
+# micro DMIC0) dans l'ADSP, puis ouvre et démarre le PCM VoiceMMode1 sans données
+# (voix-hostless.py : la voix ne passe pas par Linux). En root.
 #   scripts/appel-essai.sh start     # après avoir décroché
 #   scripts/appel-essai.sh stop      # après avoir raccroché
 set -u
@@ -24,20 +24,19 @@ start)
 	c "'SLIMBUS_0_RX Voice Mixer VoiceMMode1'" 1
 	c "'VoiceMMode1 Capture Mixer SLIMBUS_0_TX'" 1
 	mkdir -p $P
-	for fmt in "-r 8000 -c 1" "-r 16000 -c 1" "-r 48000 -c 2"; do
-		aplay  -q -D "hw:$card,$dev" -f S16_LE $fmt -t raw /dev/zero 2>$P/aplay.err & echo $! > $P/aplay.pid
-		arecord -q -D "hw:$card,$dev" -f S16_LE $fmt -t raw /dev/null 2>$P/arecord.err & echo $! > $P/arecord.pid
+	for debit in 8000 16000 48000; do
+		python3 "$here/voix-hostless.py" "hw:$card,$dev" $debit > $P/voix.log 2>&1 & echo $! > $P/voix.pid
 		sleep 2
-		if kill -0 "$(cat $P/aplay.pid)" 2>/dev/null && kill -0 "$(cat $P/arecord.pid)" 2>/dev/null; then
-			echo "Session voix ouverte ($fmt). Parlez / écoutez ; puis : $0 stop"
+		if kill -0 "$(cat $P/voix.pid)" 2>/dev/null; then
+			cat $P/voix.log
+			echo "Parlez / écoutez ; puis : $0 stop"
 			exit 0
 		fi
-		echo "   format $fmt refusé : $(cat $P/aplay.err $P/arecord.err | head -2 | tr '\n' ' ')"
-		kill "$(cat $P/aplay.pid)" "$(cat $P/arecord.pid)" 2>/dev/null
+		echo "   $debit Hz refusé : $(cat $P/voix.log)"
 	done
-	echo "Aucun format accepté : dmesg | tail -20"; exit 1 ;;
+	echo "Aucun débit accepté : dmesg | tail -20"; exit 1 ;;
 stop)
-	kill "$(cat $P/aplay.pid 2>/dev/null)" "$(cat $P/arecord.pid 2>/dev/null)" 2>/dev/null
+	kill "$(cat $P/voix.pid 2>/dev/null)" 2>/dev/null; sleep 1
 	c "'SLIMBUS_0_RX Voice Mixer VoiceMMode1'" 0
 	c "'VoiceMMode1 Capture Mixer SLIMBUS_0_TX'" 0
 	echo "Session voix fermée." ;;
