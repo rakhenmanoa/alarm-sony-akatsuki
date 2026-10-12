@@ -343,3 +343,11 @@ puis `type watchdog`), ~1 s après `now up`, et la partie Wi-Fi restait inutilis
 Démarré une fois le reste en place, il tient. `akatsuki-modem.service` attend donc
 `card0-DSI-1` et l'ADSP/CDSP « running » (40 s au plus) + 5 s. **Validé** : plus de
 plantage, Wi-Fi connecté après le démarrage.
+
+### ModemManager et SMS (12/10/2026)
+
+`pacman -S --needed modemmanager libqmi libqrtr-glib && systemctl enable --now ModemManager`.
+ModemManager 1.24.2 (Arch ARM) trouve le modem par QRTR (plugin `qcom-soc`, 3 ports)
+en une quinzaine de secondes ; `mmcli -m any -e` l'allume. **Validé : envoi et
+réception de SMS** (`mmcli -m any --messaging-create-sms=…`, puis `mmcli -s N --send`).
+Avertissements sans gravité : « predicted orbits » (aide GPS), « Unknown device subsystem ».
