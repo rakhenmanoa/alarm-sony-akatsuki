@@ -203,3 +203,34 @@
 		};
 	};
 };
+
+/*
+ * Appels : voix du modem traitée dans l'ADSP (services APR MVM/CVS/CVP, pilotes
+ * q6voice du noyau pmOS), comme sur le OnePlus 6 (sdm845-oneplus-enchilada).
+ */
+&{/remoteproc-adsp/glink-edge/apr/apr-service@9} {
+	status = "okay";
+};
+
+&{/remoteproc-adsp/glink-edge/apr/apr-service@9/dais} {
+	dai@1 {
+		reg = <1>;	/* VOICEMMODE1 */
+	};
+};
+
+&{/remoteproc-adsp/glink-edge/apr/apr-service@a} {
+	status = "okay";
+};
+
+&{/remoteproc-adsp/glink-edge/apr/apr-service@b} {
+	status = "okay";
+};
+
+&{/sound} {
+	voicemmode1-dai-link {
+		link-name = "VoiceMMode1";
+		cpu {
+			sound-dai = <&{/remoteproc-adsp/glink-edge/apr/apr-service@9/dais} 1>;
+		};
+	};
+};
