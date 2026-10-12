@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Caméra avant du Xperia XZ3 : capteur Sony IMX258 (13 Mpx ; modules LGI13BS0 /
+ * MTM13BS0), pilote mainline imx258 (compilé en module : modules/imx258/).
+ *
+ * Relevé dans l'arbre du noyau Sony sous LineageOS (12/10/2026) :
+ *   - module « sony,camera_modules@1 » : horloge MCLK1 (GPIO 14, camcc 68), reset
+ *     GPIO 9, maître CCI 1 ; alimentations vana = régulateur fixe GPIO 8
+ *     (cam-vana-front), vio = régulateur fixe GPIO 12 du PMI8998 (cam-vio),
+ *     vdig = SMPS3 du PM8998 (1,35 V) ;
+ *   - « qcom,cam-sensor@2 » (même horloge MCLK1) : CSIPHY 2.
+ * Horloge : Sony utilise 8 MHz ; le pilote mainline ne connaît que 19,2 et 24 MHz.
+ * Adresse I2C : 0x1a (adresse habituelle de l'IMX258), à confirmer au premier essai.
+ * Modèle de description : sdm845-db845c-navigation-mezzanine.dtso.
+ */
+
+&{/soc@0/camss@acb3000} {
+	vdda-phy-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo1}>;
+	vdda-pll-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo26}>;
+	status = "okay";
+};
+
+&{/soc@0/camss@acb3000/ports/port@2} {
+	csiphy2_ep: endpoint {
+		data-lanes = <0 1 2 3>;
+		remote-endpoint = <&imx258_ep>;
+	};
+};
+
+&{/soc@0/cci@ac4a000} {
+	status = "okay";
+};
+
+&{/soc@0/cci@ac4a000/i2c-bus@1} {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	camera@1a {
+		compatible = "sony,imx258";
+		reg = <0x1a>;
+
+		reset-gpios = <&{/soc@0/pinctrl@3400000} 9 1>;		/* GPIO_ACTIVE_LOW */
+		pinctrl-names = "default";
+		pinctrl-0 = <&{/soc@0/pinctrl@3400000/cam-mclk1-default-state}>;
+
+		clocks = <&{/soc@0/clock-controller@ad00000} 68>;	/* CAM_CC_MCLK1_CLK */
+		assigned-clocks = <&{/soc@0/clock-controller@ad00000} 68>;
+		assigned-clock-rates = <24000000>;
+
+		vana-supply = <&{/cam-vana-front-regulator}>;		/* 2,8 V */
+		vdig-supply = <&{/soc@0/rsc@179c0000/regulators-0/smps3}>;	/* 1,35 V */
+		vif-supply = <&{/cam-vio-reagulator}>;			/* 1,8 V */
+
+		orientation = <0>;					/* avant */
+		rotation = <270>;
+
+		port {
+			imx258_ep: endpoint {
+				link-frequencies = /bits/ 64 <636000000>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&csiphy2_ep>;
+			};
+		};
+	};
+};
