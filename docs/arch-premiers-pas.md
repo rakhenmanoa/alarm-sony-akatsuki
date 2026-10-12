@@ -191,3 +191,11 @@ Essai des haut-parleurs : [`scripts/audio-essai.sh`](../scripts/audio-essai.sh).
 
 **Validé le 12/10/2026 : les haut-parleurs fonctionnent** (`audio-essai.sh`). Profil UCM
 pour PipeWire et Plasma : `scripts/installer-audio.sh`.
+
+**Son dans Plasma (Firefox) validé le 12/10/2026.** Deux réglages nécessaires
+(`installer-audio.sh`) :
+- profil UCM `Sony/akatsuki` (chargé par le nom de carte `Sony-Xperia-XZ3`) ;
+- WirePlumber `51-akatsuki-q6asm.conf` : périodes de 1024 × 4, 16 bits, sans minuterie.
+  Sans lui : `q6asm-dai … Error queuing playback buffer -16` — chaque période part vers
+  l'ADSP par glink, qui n'a qu'un petit nombre de tampons réservés (« intents ») ; avec
+  les petites périodes de PipeWire, ils sont épuisés (`-EBUSY`) et le son est haché.

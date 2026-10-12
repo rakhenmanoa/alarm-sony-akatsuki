@@ -173,7 +173,7 @@ Au 12/10/2026, Arch Linux ARM sur la carte SD (slot B), noyau pmOS 7.1-rc1.
 | SMS | ✅ | ModemManager (QRTR, plugin `qcom-soc`) |
 | Données mobiles | 🟡 | Connexion ModemManager OK (`qmapmux0.0`) ; adresse IP à régler à la main, à automatiser (NetworkManager) |
 | Appels | ⏳ | Pas encore testés |
-| Haut-parleurs | ✅ | Matériel relevé dans l'arbre Sony sous LineageOS (WCD9340 + 2 × WSA8815, comme le Lenovo Yoga C630) → `dts/akatsuki-audio.dtsi` (`AUDIO=1`) ; profil UCM (`installer-audio.sh`) |
+| Haut-parleurs | ✅ | Matériel relevé dans l'arbre Sony sous LineageOS (WCD9340 + 2 × WSA8815, comme le Lenovo Yoga C630) → `dts/akatsuki-audio.dtsi` (`AUDIO=1`) ; profil UCM et réglage PipeWire pour l'ADSP (`installer-audio.sh`) ; son dans Plasma/Firefox validé |
 | Micro, casque USB-C | ⏳ | Micro numérique décrit dans l'UCM, pas validé ; casque par l'USB-C pas décrit |
 | Adresse MAC réelle (Wi-Fi, Bluetooth) | ⏳ | Trouvée dans la TA (unités 0xa00, 0xa08), pas encore appliquée |
 | Bluetooth | ⏳ | Firmware `crnv21.bin` récupéré, pas testé |
