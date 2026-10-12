@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Flash / lampe de poche du Xperia XZ3 : module flash du PMI8998 (0xd300),
+ * pilote mainline leds-qcom-flash.
+ *
+ * Relevé Sony (qcom,qpnp-flash-led-v2, LineageOS 12/10/2026) : deux voies utilisées,
+ * id 0 et 1 (sources 1 et 2 en mainline), la troisième désactivée ;
+ * flash 1 000 mA max (625 mA par défaut), durée 1 280 ms ;
+ * lampe (torch) 200 mA max (120 mA par défaut) par voie.
+ * Même description que le SHIFT6mq (sdm845-shift-axolotl.dts).
+ */
+&{/soc@0/spmi@c440000/pmic@3/led-controller@d300} {
+	status = "okay";
+
+	led-0 {
+		function = "flash";
+		color = <0>;			/* LED_COLOR_ID_WHITE */
+		function-enumerator = <0>;
+		led-sources = <1>;
+		led-max-microamp = <200000>;
+		flash-max-microamp = <1000000>;
+		flash-max-timeout-us = <1280000>;
+	};
+
+	led-1 {
+		function = "flash";
+		color = <0>;
+		function-enumerator = <1>;
+		led-sources = <2>;
+		led-max-microamp = <200000>;
+		flash-max-microamp = <1000000>;
+		flash-max-timeout-us = <1280000>;
+	};
+};
