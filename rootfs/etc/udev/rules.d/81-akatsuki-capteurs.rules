@@ -1,0 +1,7 @@
+# Capteurs du Xperia XZ3 : tous sur le SLPI (/dev/fastrpc-sdsp), lus par libssc.
+# La règle d'iio-sensor-proxy 3.9 (80-iio-sensor-proxy.rules) ne demande que
+# « ssc-light ssc-compass » : l'accéléromètre (LSM6DSM, rotation) et la
+# proximité (TMD2725) n'étaient jamais cherchés (12/10/2026).
+# Un seul périphérique, pour ne pas voir chaque capteur deux fois (adsp + sdsp).
+SUBSYSTEM=="misc", KERNEL=="fastrpc-sdsp", ENV{IIO_SENSOR_PROXY_TYPE}="ssc-accel ssc-light ssc-proximity ssc-compass"
+SUBSYSTEM=="misc", KERNEL=="fastrpc-adsp", ENV{IIO_SENSOR_PROXY_TYPE}=""

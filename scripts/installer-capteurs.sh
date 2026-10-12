@@ -48,6 +48,8 @@ printf '%s\n' "${REVISION:-2.1}" > "$d/socinfo/revision"
 echo "Fichiers : $(find "$d" -type f | wc -l) dans $d"
 
 pacman -S --needed --noconfirm iio-sensor-proxy
+install -m 644 "$here/../rootfs/etc/udev/rules.d/81-akatsuki-capteurs.rules" /etc/udev/rules.d/
+udevadm control --reload && udevadm trigger -s misc
 install -m 644 "$here/../rootfs/etc/systemd/system/akatsuki-hexagonrpcd-sdsp.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable akatsuki-hexagonrpcd-sdsp.service
