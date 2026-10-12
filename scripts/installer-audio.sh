@@ -19,5 +19,5 @@ install -m 644 "$here/../rootfs/etc/systemd/system/akatsuki-appel-son.service" /
 systemctl daemon-reload
 systemctl enable --now akatsuki-appel-son.service
 card="$(awk '/Sony-Xperia-XZ3/ { print $1; exit }' /proc/asound/cards)"
-[ -n "$card" ] && alsaucm -c "$card" list _verbs || echo "Carte Sony-Xperia-XZ3 absente : démarrer l'image AUDIO=1."
+[ -n "$card" ] && timeout 10 alsaucm -c "$card" list _verbs || echo "Carte Sony-Xperia-XZ3 absente : démarrer l'image AUDIO=1."
 echo "Terminé. Redémarrer la session (ou le téléphone) pour que PipeWire relise le profil."

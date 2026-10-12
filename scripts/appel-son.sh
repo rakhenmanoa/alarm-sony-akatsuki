@@ -8,11 +8,11 @@ while :; do
 	if mmcli -m any --voice-list-calls 2>/dev/null | grep -q '(active)'; then
 		if [ $actif = 0 ]; then
 			echo "appel établi : son branché"
-			"$here/appel-essai.sh" start && actif=1
+			timeout 20 "$here/appel-essai.sh" start && actif=1
 		fi
 	elif [ $actif = 1 ]; then
 		echo "appel terminé : son débranché"
-		"$here/appel-essai.sh" stop
+		timeout 20 "$here/appel-essai.sh" stop
 		actif=0
 	fi
 	sleep 1
