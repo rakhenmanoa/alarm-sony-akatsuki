@@ -35,6 +35,8 @@ le noyau pmOS du `boot.img`. On peut le retirer (`pacman -Rns linux-aarch64`).
 
 ## Résultat
 
-- 12/10/2026 : Plasma Mobile s'ouvre sur l'écran du XZ3.
+- 12/10/2026 : **validé** — Plasma Mobile s'ouvre sur l'écran du XZ3, rendu par le GPU
+  (Adreno 630, freedreno ; aucune erreur zap), tactile, échelle et clavier virtuel
+  fonctionnent.
 
 Reste : NetworkManager (panneaux Wi-Fi et réseau mobile de Plasma), son, rotation.
