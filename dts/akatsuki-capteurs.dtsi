@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Capteurs du Xperia XZ3 : accéléromètre, gyroscope, magnétomètre, lumière,
+ * proximité… sont reliés au SLPI (DSP « sensors »), comme chez Sony
+ * (qcom,msm-ssc-sensors). Linux n'y accède que par FastRPC (/dev/fastrpc-sdsp),
+ * via hexagonrpcd, libssc et iio-sensor-proxy.
+ *
+ * Zone mémoire identique à celle de Sony (0x96700000, 20 Mio, déjà dans sdm845.dtsi).
+ * Firmware : qcom/sdm845/Sony/tama/slpi.mbn (scripts/extraire-firmwares-adb.sh).
+ * Même description que le OnePlus 6 et le SHIFT6mq.
+ */
+&{/soc@0/remoteproc@5c00000} {
+	firmware-name = "qcom/sdm845/Sony/tama/slpi.mbn";
+	status = "okay";
+};

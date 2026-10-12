@@ -1,0 +1,9 @@
+[Unit]
+Description=Enregistre l'écart heure/RTC toutes les 15 minutes (au cas où l'arrêt échoue)
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+
+[Install]
+WantedBy=timers.target

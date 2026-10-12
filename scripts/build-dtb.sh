@@ -14,6 +14,7 @@
 # CAMERA=1 ajoute akatsuki-camera-avant.dtsi (IMX258, module imx258 requis).
 # VIBREUR=1 ajoute akatsuki-vibreur.dtsi (haptics du PMI8998) et akatsuki-bluetooth.dtsi.
 # FLASH=1 ajoute akatsuki-flash.dtsi (flash et lampe de poche du PMI8998).
+# CAPTEURS=1 ajoute akatsuki-capteurs.dtsi (SLPI : capteurs par hexagonrpcd).
 # WLAN_MAC=xx:…  BT_MAC=xx:… : adresses MAC d'origine (scripts/ta-mac.py) écrites dans
 #   le DTB (local-mac-address, local-bd-address) ; jamais enregistrées dans le dépôt.
 #
@@ -37,6 +38,7 @@ if [ "${AUDIO:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-audio.dtsi"; f
 if [ "${CAMERA:-0}" != 0 ]; then set -- "$@" "$here/../dts/akatsuki-camera-avant.dtsi"; fi
 if [ "${VIBREUR:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-vibreur.dtsi" "$here/../dts/akatsuki-bluetooth.dtsi"; fi
 if [ "${FLASH:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-flash.dtsi"; fi
+if [ "${CAPTEURS:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-capteurs.dtsi"; fi
 if [ "${CAMERA:-0}" = diag ]; then set -- "$@" "$here/../dts/akatsuki-camera-diag.dtsi"; fi
 
 command -v dtc >/dev/null 2>&1 || { echo "Erreur : dtc est requis (paquet dtc)." >&2; exit 2; }

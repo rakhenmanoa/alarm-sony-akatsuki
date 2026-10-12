@@ -1,0 +1,35 @@
+#!/bin/sh
+# akatsuki-horloge — heure correcte malgré une horloge matérielle en lecture seule.
+#
+# La RTC du PM8998 continue de compter quand le téléphone est éteint, mais Linux
+# ne peut pas la régler (réservé à TrustZone ; Android garde l'écart dans ses
+# propres fichiers). On fait pareil : on garde l'écart entre l'heure réelle et la
+# RTC, et on le réapplique au démarrage (principe de swclock-offset de postmarketOS).
+#
+#   akatsuki-horloge restaurer   au démarrage : heure = RTC + écart enregistré
+#   akatsuki-horloge sauver      écart = heure actuelle − RTC (arrêt, toutes les 15 min)
+set -eu
+rtc=/sys/class/rtc/rtc0/since_epoch
+fichier=/var/lib/akatsuki/horloge-ecart
+# rtc-pm8xxx est un module : il peut arriver après ce service
+[ -r "$rtc" ] || modprobe rtc-pm8xxx 2>/dev/null || true
+i=0; while [ ! -r "$rtc" ] && [ $i -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
+[ -r "$rtc" ] || { echo "akatsuki-horloge : pas de RTC" >&2; exit 0; }
+r=$(cat "$rtc")
+case "${1:-}" in
+restaurer)
+	[ -r "$fichier" ] || { echo "akatsuki-horloge : pas encore d'écart enregistré"; exit 0; }
+	e=$(cat "$fichier")
+	date -s "@$((r + e))" >/dev/null
+	echo "akatsuki-horloge : heure restaurée ($(date))"
+	;;
+sauver)
+	# Ne rien enregistrer tant que l'heure n'est pas plausible (avant 2026)
+	n=$(date +%s)
+	[ "$n" -gt 1767225600 ] || { echo "akatsuki-horloge : heure non réglée, rien enregistré"; exit 0; }
+	mkdir -p "${fichier%/*}"
+	echo $((n - r)) > "$fichier.tmp" && mv "$fichier.tmp" "$fichier"
+	;;
+*)
+	echo "usage : akatsuki-horloge restaurer|sauver" >&2; exit 2 ;;
+esac

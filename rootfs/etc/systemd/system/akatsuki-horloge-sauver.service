@@ -1,0 +1,6 @@
+[Unit]
+Description=Enregistre l'écart entre l'heure et la RTC
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/akatsuki-horloge sauver

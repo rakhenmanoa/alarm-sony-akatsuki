@@ -1,0 +1,13 @@
+[Unit]
+Description=hexagonrpcd pour le SLPI (capteurs du Xperia XZ3)
+After=dev-fastrpc\x2dsdsp.device
+Requires=dev-fastrpc\x2dsdsp.device
+Before=iio-sensor-proxy.service
+
+[Service]
+ExecStart=/usr/bin/hexagonrpcd -f /dev/fastrpc-sdsp -d sdsp -s -R /usr/share/qcom/sdm845/Sony/tama
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

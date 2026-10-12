@@ -1,0 +1,17 @@
+[Unit]
+Description=Heure du Xperia XZ3 : RTC + écart enregistré
+DefaultDependencies=no
+After=local-fs.target
+Before=sysinit.target time-set.target systemd-timesyncd.service
+Wants=time-set.target
+Conflicts=shutdown.target
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/akatsuki-horloge restaurer
+ExecStop=/usr/local/bin/akatsuki-horloge sauver
+
+[Install]
+WantedBy=sysinit.target
