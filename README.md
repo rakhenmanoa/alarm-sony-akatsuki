@@ -156,9 +156,28 @@ puis remplacer le rootfs par Arch.
 
 ## État
 
-10/10/2026 : **le noyau mainline 7.1 démarre sur le XZ3** (carte SD, USB, réseau USB, boutons).
-11/10/2026 : **Arch Linux ARM démarre depuis la carte SD** (SSH par USB, aucun service en échec).
-Écran pas encore. Détails : [docs/premier-demarrage-resultats.md](docs/premier-demarrage-resultats.md).
+Au 12/10/2026, Arch Linux ARM sur la carte SD (slot B), noyau pmOS 7.1-rc1.
+
+| Fonction | État | Comment on y est arrivé |
+|---|---|---|
+| Démarrage du noyau mainline | ✅ | Noyau pmOS dans un `boot.img` sur `boot_b`, DTB corrigé (mémoire réservée Sony, UFS désactivé) — [premier-demarrage-resultats.md](docs/premier-demarrage-resultats.md) |
+| Arch Linux ARM sur carte SD | ✅ | Rootfs ALARM préparé depuis LineageOS par adb, SSH par le réseau USB — [arch-premiers-pas.md](docs/arch-premiers-pas.md) |
+| Modules externes (pilotes ajoutés) | ✅ | Verrouillage du noyau pmOS retiré dans l'image (`noyau-sans-verrou.py`), modules compilés avec la même chaîne que pmOS |
+| Écran | ✅ | Pilote du panneau LGD (série de Marijn Suijten) compilé en module, DSI et DSC décrits dans le DTB — [ecran.md](docs/ecran.md) |
+| Tactile | ✅ | Module `atmel_mxt_ts` et nœud maXTouch sur l'I2C5 dans le DTB |
+| GPU (Adreno 630) | ✅ | Firmware zap de Sony, chargé après le panneau |
+| Interface (Plasma Mobile) | ✅ | Paquets Arch + SDDM en connexion automatique — [interface.md](docs/interface.md) |
+| Wi-Fi | ✅ | Réglages de carte Sony convertis en `board-2.bin`, commande « quiet mode » retirée d'`ath10k_core` (plantage du firmware) — [modem-wifi.md](docs/modem-wifi.md) |
+| Modem (démarrage) | ✅ | rmtfs sur une copie de l'EFS, tqftpserv, IPA, et services QMI Sony recréés (`qmi-ecoute.py`) ; démarrage après l'écran et les DSP |
+| SIM (verrouillage Sony) | ✅ | Vrai service MiscTA qui lit une copie de la partition TA (format relevé dans les binaires Sony) |
+| SMS | ✅ | ModemManager (QRTR, plugin `qcom-soc`) |
+| Données mobiles | 🟡 | Connexion ModemManager OK (`qmapmux0.0`) ; adresse IP à régler à la main, à automatiser (NetworkManager) |
+| Appels | ⏳ | Pas encore testés |
+| Audio | ⏳ | ADSP démarré, carte son absente du DTB ; relevé du matériel sous LineageOS à faire (`releve-audio-adb.sh`) |
+| Adresse MAC réelle (Wi-Fi, Bluetooth) | ⏳ | Trouvée dans la TA (unités 0xa00, 0xa08), pas encore appliquée |
+| Bluetooth | ⏳ | Firmware `crnv21.bin` récupéré, pas testé |
+| Horloge (RTC) | ⏳ | Heure fausse au démarrage ; contournement : NTP (`timedatectl set-ntp true`) |
+| Capteurs, rotation, caméra, GPS, vidéo | ⏳ | Pas commencés (`venus.mbn` fait redémarrer le téléphone : non installé) |
 
 ## Crédits
 
