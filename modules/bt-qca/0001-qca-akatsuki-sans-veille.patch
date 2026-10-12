@@ -44,7 +44,7 @@
  			}
 --- a/drivers/bluetooth/hci_qca.c
 +++ b/drivers/bluetooth/hci_qca.c
-@@ -41,6 +41,11 @@
+@@ -41,6 +41,16 @@
  #include "hci_uart.h"
  #include "btqca.h"
  
@@ -53,10 +53,15 @@
 +module_param(qca_no_ibs, bool, 0644);
 +MODULE_PARM_DESC(qca_no_ibs, "Ne jamais activer la veille IBS (WCN399x)");
 +
++/* Akatsuki : le firmware annonce LE Read Transmit Power mais le refuse. */
++static bool qca_broken_le_tx_power;
++module_param(qca_broken_le_tx_power, bool, 0644);
++MODULE_PARM_DESC(qca_broken_le_tx_power, "Ne pas envoyer LE Read Transmit Power (0x204b)");
++
  /* HCI_IBS protocol messages */
  #define HCI_IBS_SLEEP_IND	0xFE
  #define HCI_IBS_WAKE_IND	0xFD
-@@ -1109,7 +1114,8 @@
+@@ -1109,7 +1119,8 @@
  				qca->memdump_state = QCA_MEMDUMP_COLLECTED;
  				cancel_delayed_work(&qca->ctrl_memdump_timeout);
  				clear_and_wake_up_bit(QCA_MEMDUMP_COLLECTION, &qca->flags);
@@ -66,7 +71,7 @@
  				mutex_unlock(&qca->hci_memdump_lock);
  				return;
  			}
-@@ -1685,7 +1691,8 @@
+@@ -1685,7 +1696,8 @@
  		msleep(50);
  
  		clear_bit(QCA_SSR_TRIGGERED, &qca->flags);
@@ -76,7 +81,7 @@
  
  		qca->tx_ibs_state = HCI_IBS_TX_AWAKE;
  		qca->memdump_state = QCA_MEMDUMP_IDLE;
-@@ -2027,7 +2034,8 @@
+@@ -2027,7 +2039,8 @@
  	ret = qca_uart_setup(hdev, qca_baudrate, soc_type, ver,
  			firmware_name, rampatch_name);
  	if (!ret) {
@@ -86,7 +91,17 @@
  		qca_debugfs_init(hdev);
  		hu->hdev->hw_error = qca_hw_error;
  		hu->hdev->reset = qca_reset;
-@@ -2655,7 +2663,7 @@
+@@ -2542,6 +2555,9 @@
+ 
+ 	hdev = qcadev->serdev_hu.hdev;
+ 
++	if (qca_broken_le_tx_power)
++		hci_set_quirk(hdev, HCI_QUIRK_BROKEN_READ_TRANSMIT_POWER);
++
+ 	if (power_ctrl_enabled) {
+ 		hci_set_quirk(hdev, HCI_QUIRK_NON_PERSISTENT_SETUP);
+ 		hdev->shutdown = qca_hci_shutdown;
+@@ -2655,7 +2671,7 @@
  	/* if BT SoC is running with default firmware then it does not
  	 * support in-band sleep
  	 */

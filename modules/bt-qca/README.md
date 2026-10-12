@@ -14,8 +14,15 @@ la puce ne répond jamais à l'octet de réveil (relevé du 12/10/2026 :
 | `btqca` | `nvm_no_ibs=1` | ne pas activer la veille IBS dans la NVM |
 | `btqca` | `nvm_no_deep_sleep=1` | ne pas activer la veille profonde dans la NVM |
 | `hci_uart` | `qca_no_ibs=1` | ne jamais activer l'IBS côté hôte (et ne pas bloquer la mise en veille du téléphone) |
+| `hci_uart` | `qca_broken_le_tx_power=1` | ne pas envoyer `LE Read Transmit Power` (0x204b), annoncé mais refusé par le firmware |
 
-Il journalise aussi les champs d'origine de la NVM (`QCA NVM HCI tag (origine)`).
+Il journalise aussi les champs d'origine de la NVM. Sur le XZ3 :
+`QCA NVM HCI tag (origine): 82 01 11 08 04 14 28 02 15` (IBS déjà activée, 0x80,
+débit 0x11 = 3 200 000) et `deep sleep tag (origine): 01` (déjà activée). Les
+options de `btqca` ne changent donc rien ici : c'est `qca_no_ibs` (l'hôte n'envoie
+plus d'octet de réveil) qui débloque la puce. Ensuite, l'initialisation s'arrêtait
+sur `unexpected cc 0x204b length: 1 < 3` / `Opcode 0x204b failed: -38`, d'où
+`qca_broken_le_tx_power`.
 
 ## Construction
 
@@ -36,8 +43,7 @@ d=/usr/lib/modules/$(uname -r)/updates; mkdir -p $d
 install -m 644 btqca.ko hci_uart.ko $d/ && depmod -a
 modinfo -n hci_uart        # doit afficher …/updates/hci_uart.ko
 cat > /etc/modprobe.d/akatsuki-bluetooth.conf <<'E'
-options btqca nvm_no_ibs=1 nvm_no_deep_sleep=1
-options hci_uart qca_no_ibs=1
+options hci_uart qca_no_ibs=1 qca_broken_le_tx_power=1
 E
 reboot
 ```
