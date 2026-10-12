@@ -10,7 +10,14 @@
  *     vdig = SMPS3 du PM8998 (1,35 V) ;
  *   - « qcom,cam-sensor@2 » (même horloge MCLK1) : CSIPHY 2.
  * Horloge : Sony utilise 8 MHz ; le pilote mainline ne connaît que 19,2 et 24 MHz.
- * Adresse I2C : 0x1a (adresse habituelle de l'IMX258), à confirmer au premier essai.
+ * Adresse I2C : 0x1a (adresse habituelle de l'IMX258).
+ * Premier essai (12/10/2026) : CAMSS ok, mais « cci master 1 queue 0 timeout » à la
+ * lecture de l'identifiant. Corrections : bus à 400 kHz (mode « fast » de Sony,
+ * i2c_freq_mode 1 ; le DTB mainline met 1 MHz) et L22 (2,7 V, autofocus) allumée en
+ * permanence : Sony l'allume avec le capteur, et une puce non alimentée sur le bus
+ * partagé (autofocus, EEPROM) peut le bloquer.
+ * Le fichier CamX de Sony (sensormodule.poodle_imx258) ne contient pas les registres
+ * du capteur (seulement les modes : 4160x3120, 2100x1556…) : le pilote mainline sert.
  * Modèle de description : sdm845-db845c-navigation-mezzanine.dtso.
  */
 
@@ -31,7 +38,12 @@
 	status = "okay";
 };
 
+&{/soc@0/rsc@179c0000/regulators-0/ldo22} {
+	regulator-always-on;	/* 2,7 V : autofocus de la caméra avant (cam_vaf) */
+};
+
 &{/soc@0/cci@ac4a000/i2c-bus@1} {
+	clock-frequency = <400000>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 
