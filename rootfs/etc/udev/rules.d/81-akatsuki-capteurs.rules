@@ -5,6 +5,6 @@
 # Un seul périphérique, pour ne pas voir chaque capteur deux fois (adsp + sdsp).
 SUBSYSTEM=="misc", KERNEL=="fastrpc-sdsp", ENV{IIO_SENSOR_PROXY_TYPE}="ssc-accel ssc-light ssc-proximity ssc-compass"
 # Axes de l'accéléromètre : sans correction, rotation inversée en portrait comme en
-# paysage (12/10/2026) : capteur monté à 180°, on retourne X et Y. À confirmer.
+# paysage (12/10/2026) : capteur monté à 180°, on retourne X et Y (validé le 12/10/2026).
 SUBSYSTEM=="misc", KERNEL=="fastrpc-sdsp", ENV{ACCEL_MOUNT_MATRIX}="-1, 0, 0; 0, -1, 0; 0, 0, 1"
 SUBSYSTEM=="misc", KERNEL=="fastrpc-adsp", ENV{IIO_SENSOR_PROXY_TYPE}=""
