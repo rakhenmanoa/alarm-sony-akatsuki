@@ -1,11 +1,53 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Bluetooth du Xperia XZ3 (WCN3990 sur l'UART 6) : liaison à 4 fils (TX, RX, CTS,
- * RTS), comme chez Sony (qupv3_se6_4uart : GPIO 45 à 48) et sur le OnePlus 6.
- * Le DTB mainline de tama n'active que TX/RX : le contrôle de flux manque, d'où
- * « Frame reassembly failed (-84) » et « Failed to change controller baudrate »
- * (constaté le 12/10/2026).
+ * Bluetooth du Xperia XZ3 (WCN3990 sur l'UART 6).
+ *
+ * Liaison à 4 fils (TX, RX, CTS, RTS) comme chez Sony (qupv3_se6_4uart, GPIO 45
+ * à 48) et sur les autres SDM845 (OnePlus 6, Pocophone F1). Le DTB mainline de
+ * tama n'active que TX/RX : sans RTS, la puce répond au changement de débit avant
+ * que l'hôte ait changé le sien, d'où « Frame reassembly failed (-84) » et
+ * « Failed to change controller baudrate » (constaté le 12/10/2026).
+ *
+ * Polarisation des broches reprise telle quelle de l'arbre matériel Sony :
+ * CTS (45) et RX (48) sans tirage, RTS (46) tiré vers le bas, TX (47) tiré vers
+ * le haut. L'état « 4pin » de sdm845.dtsi (CTS tiré bas, RX tiré haut, TX libre)
+ * empêchait la lecture de la version de la puce (-110).
+ *
+ * Alimentations (relevé Sony : io S3A, xtal S5A, core L7A 1,8 V, pa L17A,
+ * ldo L25A) : le pilote mainline n'a que vddio/vddxo/vddrf/vddch0. Le DTB tama
+ * met vddxo sur S5A, qui n'est que la source de L7A ; les autres SDM845 mettent
+ * L7A (1,8 V, aussi l'oscillateur du Wi-Fi). On fait de même : L7A tenue par le
+ * Bluetooth garde S5A allumée.
  */
+&{/soc@0/pinctrl@3400000} {
+	akatsuki_bt_uart: akatsuki-bt-uart-state {
+		cts-rx-pins {
+			pins = "gpio45", "gpio48";
+			function = "qup6";
+			drive-strength = <2>;
+			bias-disable;
+		};
+
+		rts-pins {
+			pins = "gpio46";
+			function = "qup6";
+			drive-strength = <2>;
+			bias-pull-down;
+		};
+
+		tx-pins {
+			pins = "gpio47";
+			function = "qup6";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+};
+
 &{/soc@0/geniqup@8c0000/serial@898000} {
-	pinctrl-0 = <&{/soc@0/pinctrl@3400000/qup-uart6-4pin-state}>;
+	pinctrl-0 = <&akatsuki_bt_uart>;
+};
+
+&{/soc@0/geniqup@8c0000/serial@898000/bluetooth} {
+	vddxo-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo7}>;
 };
