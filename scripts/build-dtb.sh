@@ -30,7 +30,8 @@ in="$1"; out="$2"; shift 2
 # ECRAN=dsi : vrai écran (panneau LGD, DSC) à la place du framebuffer simple
 if [ "${ECRAN:-}" = dsi ]; then set -- "$@" "$here/../dts/akatsuki-ecran-dsi.dtsi" "$here/../dts/akatsuki-tactile.dtsi"; fi
 if [ "${AUDIO:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-audio.dtsi"; fi
-if [ "${CAMERA:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-camera-avant.dtsi"; fi
+if [ "${CAMERA:-0}" != 0 ]; then set -- "$@" "$here/../dts/akatsuki-camera-avant.dtsi"; fi
+if [ "${CAMERA:-0}" = diag ]; then set -- "$@" "$here/../dts/akatsuki-camera-diag.dtsi"; fi
 
 command -v dtc >/dev/null 2>&1 || { echo "Erreur : dtc est requis (paquet dtc)." >&2; exit 2; }
 [ -f "$in" ] || { echo "Erreur : fichier introuvable : $in" >&2; exit 2; }

@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * DIAGNOSTIC (temporaire) — caméra avant : alimentations du module allumées en
+ * permanence pour sonder le bus CCI 1 depuis Linux (i2cdetect -y -r 17), et second
+ * essai de l'IMX258 à l'autre adresse possible (0x10). À utiliser avec
+ * akatsuki-camera-avant.dtsi (CAMERA=diag).
+ */
+&{/cam-vana-front-regulator} {
+	regulator-always-on;
+};
+
+&{/cam-vio-reagulator} {
+	regulator-always-on;
+};
+
+&{/soc@0/cci@ac4a000/i2c-bus@1} {
+	camera@10 {
+		compatible = "sony,imx258";
+		reg = <0x10>;
+		reset-gpios = <&{/soc@0/pinctrl@3400000} 9 1>;
+		clocks = <&{/soc@0/clock-controller@ad00000} 68>;
+		assigned-clocks = <&{/soc@0/clock-controller@ad00000} 68>;
+		assigned-clock-rates = <24000000>;
+		vana-supply = <&{/cam-vana-front-regulator}>;
+		vdig-supply = <&{/soc@0/rsc@179c0000/regulators-0/smps3}>;
+		vif-supply = <&{/cam-vio-reagulator}>;
+		port {
+			endpoint {
+				link-frequencies = /bits/ 64 <636000000>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+	};
+};
