@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Vibreur du Xperia XZ3 : moteur LRA piloté par le bloc « haptics » du PMI8998
+ * (pilote qcom-spmi-haptics du noyau pmOS). Nœud déjà présent (désactivé) dans le
+ * DTB pmOS ; fréquence d'après l'arbre Sony (qcom,wave-play-rate-us = 8621 µs,
+ * ~116 Hz, LRA, onde sinusoïdale).
+ */
+&{/soc@0/spmi@c440000/pmic@3/haptics@c000} {
+	qcom,wave-play-rate-us = <8621>;
+	status = "okay";
+};

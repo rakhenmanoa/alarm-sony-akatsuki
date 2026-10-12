@@ -12,6 +12,9 @@
 # ECRAN=dsi ajoute akatsuki-ecran-dsi.dtsi et akatsuki-tactile.dtsi (vrai écran et tactile, modules requis).
 # AUDIO=1 ajoute akatsuki-audio.dtsi (codec WCD9340, haut-parleurs WSA8815).
 # CAMERA=1 ajoute akatsuki-camera-avant.dtsi (IMX258, module imx258 requis).
+# VIBREUR=1 ajoute akatsuki-vibreur.dtsi (haptics du PMI8998).
+# WLAN_MAC=xx:…  BT_MAC=xx:… : adresses MAC d'origine (scripts/ta-mac.py) écrites dans
+#   le DTB (local-mac-address, local-bd-address) ; jamais enregistrées dans le dépôt.
 #
 # Exemple :
 #   scripts/build-dtb.sh x/boot/dtbs/qcom/sdm845-sony-xperia-tama-akatsuki.dtb \
@@ -31,6 +34,7 @@ in="$1"; out="$2"; shift 2
 if [ "${ECRAN:-}" = dsi ]; then set -- "$@" "$here/../dts/akatsuki-ecran-dsi.dtsi" "$here/../dts/akatsuki-tactile.dtsi"; fi
 if [ "${AUDIO:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-audio.dtsi"; fi
 if [ "${CAMERA:-0}" != 0 ]; then set -- "$@" "$here/../dts/akatsuki-camera-avant.dtsi"; fi
+if [ "${VIBREUR:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-vibreur.dtsi"; fi
 if [ "${CAMERA:-0}" = diag ]; then set -- "$@" "$here/../dts/akatsuki-camera-diag.dtsi"; fi
 
 command -v dtc >/dev/null 2>&1 || { echo "Erreur : dtc est requis (paquet dtc)." >&2; exit 2; }
@@ -44,6 +48,16 @@ echo "== Garde-fou UFS sur l'entrée"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+
+# Adresses MAC propres au téléphone : fragment généré, hors dépôt
+octets() { echo "$1" | grep -Eqi '^([0-9a-f]{2}:){5}[0-9a-f]{2}$' || { echo "Erreur : adresse MAC invalide : $1" >&2; exit 2; }; echo "$1" | tr ':' ' '; }
+if [ -n "${WLAN_MAC:-}${BT_MAC:-}" ]; then
+	: > "$tmp/mac.dtsi"
+	[ -n "${WLAN_MAC:-}" ] && printf '&{/soc@0/wifi@18800000} { local-mac-address = [%s]; };\n' "$(octets "$WLAN_MAC")" >> "$tmp/mac.dtsi"
+	# local-bd-address : octets dans l'ordre inverse (petit-boutiste)
+	[ -n "${BT_MAC:-}" ] && printf '&{/soc@0/geniqup@8c0000/serial@898000/bluetooth} { local-bd-address = [%s]; };\n' "$(octets "$BT_MAC" | tr ' ' '\n' | tac | tr '\n' ' ')" >> "$tmp/mac.dtsi"
+	set -- "$@" "$tmp/mac.dtsi"
+fi
 
 dtc -q -I dtb -O dts "$in" -o "$tmp/base.dts"
 
