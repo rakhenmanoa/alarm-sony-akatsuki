@@ -225,6 +225,14 @@ données, bourrage à 4 octets.
 Le service ne modifie jamais `ta.img` : les écritures du modem vont dans
 `/var/lib/miscta/ecrits/<unité>.bin` et sont relues en priorité.
 
+**Résultat du 12/10/2026 : validé.** Les 4 blocs de la copie ont une somme correcte
+(135 unités en partition 2). Au démarrage, le modem lit 0x7d3, 0x7da, 0x7db, 0x7df,
+0x851, 0x852, 0x8a1, 0x8b3, 0x9f6 (0x9b7 absente, comme sur le téléphone), puis :
+`MMGSDI_PIN1_EVT`, `MMGSDI_PERSO_EVT … status: 0x1`, `MMGSDI_SUBSCRIPTION_READY_EVT`.
+Le message « SIM Lock response message not supported » a disparu : la vérification
+du verrouillage SIM (s1sl) passe, la SIM est prête. Plus d'écriture dans 0x9c7
+(cause de plantage).
+
 ### Wi-Fi : le firmware plante à la création de l'interface (11/10/2026)
 
 `ip link set wlan0 up` → `wmi command 20481 timeout`, `failed to create WMI vdev 0`,
