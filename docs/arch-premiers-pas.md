@@ -188,3 +188,6 @@ d'ampli sur I2C), micros numériques DMIC0 et DMIC3, pas de prise jack (casque p
 l'USB-C). Même matériel que le Lenovo Yoga C630 : [`dts/akatsuki-audio.dtsi`](../dts/akatsuki-audio.dtsi)
 reprend sa description. Image : `ECRAN=dsi AUDIO=1 SANS_VERROU=1 test-boot/build.sh …`.
 Essai des haut-parleurs : [`scripts/audio-essai.sh`](../scripts/audio-essai.sh).
+
+**Validé le 12/10/2026 : les haut-parleurs fonctionnent** (`audio-essai.sh`). Profil UCM
+pour PipeWire et Plasma : `scripts/installer-audio.sh`.
