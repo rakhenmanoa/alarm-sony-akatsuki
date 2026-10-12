@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Tactile du Xperia XZ3 : Atmel maXTouch (pilote atmel_mxt_ts, compilé en module :
+ * modules/atmel_mxt_ts/), sur l'I2C5, adresse 0x4a. Description reprise du DTS de
+ * P. Hodina (2023) ; les états de broches ts-default/ts-sleep existent déjà dans le
+ * DTB pmOS (tama.dtsi), le bus I2C5 aussi (actif, vide).
+ */
+
+&{/soc@0/geniqup@8c0000/i2c@894000} {
+	touchscreen@4a {
+		compatible = "atmel,maxtouch";
+		reg = <0x4a>;
+
+		interrupt-parent = <&{/soc@0/pinctrl@3400000}>;
+		interrupts = <125 8>;				/* IRQ_TYPE_LEVEL_LOW */
+
+		reset-gpios = <&{/soc@0/pinctrl@3400000} 99 1>;	/* GPIO_ACTIVE_LOW */
+		vdda-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo28}>;	/* 3,0 V */
+		vdd-supply = <&{/ts-vddio-regulator}>;		/* 1,84 V (GPIO 133) */
+
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&{/soc@0/pinctrl@3400000/ts-default-state}>;
+		pinctrl-1 = <&{/soc@0/pinctrl@3400000/ts-sleep-state}>;
+	};
+};

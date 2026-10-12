@@ -63,3 +63,18 @@ M=/usr/lib/modules/$(uname -r)
 install -D -m 644 /root/panel-lgd-lh599qh3-edb1.ko $M/updates/panel-lgd-lh599qh3-edb1.ko
 depmod -a
 ```
+
+## Tactile (12/10/2026)
+
+Pilote officiel `atmel_mxt_ts` (absent de la configuration pmOS) compilé en module :
+[`modules/atmel_mxt_ts/`](../modules/atmel_mxt_ts/). DTB :
+[`dts/akatsuki-tactile.dtsi`](../dts/akatsuki-tactile.dtsi) (inclus avec `ECRAN=dsi`) —
+`touchscreen@4a` sur l'I2C5 (`i2c@894000`), interruption GPIO 125 (niveau bas),
+reset GPIO 99 (actif bas), `vdda` = LDO28, `vdd` = DCDC GPIO 133, d'après Hodina (2023).
+
+```sh
+insmod /root/atmel_mxt_ts.ko
+dmesg | grep -i mxt
+cat /proc/bus/input/devices | grep -A4 -i atmel
+pacman -S --needed evtest && evtest      # toucher l'écran
+```
