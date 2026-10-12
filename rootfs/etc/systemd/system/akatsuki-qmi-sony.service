@@ -1,8 +1,9 @@
 # Services QMI propres à Sony (TA, MiscTA, SCT, journal du modem « mlog »).
 # Sans eux, le modem du XZ3 se bloque après la lecture de l'EFS et plante au bout
-# de 40 s (docs/modem-wifi.md). Pour l'instant : qmi-ecoute.py, qui les annonce,
-# répond « non pris en charge » et écrit le journal du modem dans celui du système
-# (journalctl -u akatsuki-qmi-sony).
+# de 40 s (docs/modem-wifi.md). qmi-ecoute.py les annonce, sert MiscTA à partir de
+# /var/lib/miscta/ta.img (copie de la partition TA, jamais modifiée ; écritures du
+# modem dans /var/lib/miscta/ecrits), répond « non pris en charge » pour TA et SCT
+# et écrit le journal du modem dans celui du système (journalctl -u akatsuki-qmi-sony).
 [Unit]
 Description=Services QMI Sony pour le modem du Xperia XZ3
 After=systemd-modules-load.service

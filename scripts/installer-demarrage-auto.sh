@@ -6,6 +6,7 @@
 # Prérequis (docs/modem-wifi.md) :
 #   - boot.img sans verrouillage (SANS_VERROU=1, boot-arch-wifi.img) sur le slot B ;
 #   - copie de l'EFS dans /var/lib/rmtfs (scripts/copier-efs-adb.sh) ;
+#   - (conseillé) copie de la TA dans /var/lib/miscta/ta.img (scripts/copier-ta-adb.sh) ;
 #   - firmwares Sony dans /root/fw-essai (scripts/extraire-firmwares-adb.sh) ;
 #   - rmtfs et tqftpserv installés (scripts/installer-outils-modem.sh) ;
 #   - réglages Wi-Fi Sony : /usr/lib/firmware/updates/ath10k/WCN3990/hw1.0/board-2.bin.
@@ -37,6 +38,8 @@ grep -q '\[none\]' /sys/kernel/security/lockdown || \
 for c in rmtfs tqftpserv python3 zstd; do
 	command -v "$c" >/dev/null 2>&1 || die "$c introuvable."
 done
+[ -f /var/lib/miscta/ta.img ] || \
+	echo "   Attention : copie de la TA absente (/var/lib/miscta/ta.img, scripts/copier-ta-adb.sh) : MiscTA répondra « introuvable »."
 [ -f /usr/lib/firmware/updates/ath10k/WCN3990/hw1.0/board-2.bin ] || \
 	echo "   Attention : réglages Wi-Fi Sony (board-2.bin) absents : le Wi-Fi plantera."
 

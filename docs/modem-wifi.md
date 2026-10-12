@@ -182,13 +182,48 @@ python3 qmi-ecoute.py | tee /root/qmi-ecoute.log      # session 3, AVANT rmtfs
 existent (même s'ils répondent « non pris en charge »), le modem continue son
 démarrage : il interroge **MiscTA (228)** et envoie son **journal (mlog, 230)** en clair.
 
-- MiscTA, message `0x0001` (lecture d'une unité TA ?) : unités 0x7d3, 0x7da, 0x7db,
-  0x7df, 0x9c7 ; message `0x0002` (taille d'une unité ?) : 0x8a1, 0x8b3, 0x9b7, 0x9f6 ;
-  message `0x0004` (écriture) : unité 0x9c7 avec le texte `-1:3:s1sl/s1sl_integration.c:2121`.
+- MiscTA, message `0x0001` (taille d'une unité) : unités 0x7d3, 0x7da, 0x7db,
+  0x7df, 0x9c7 ; message `0x0002` (lecture) : 0x8a1, 0x8b3, 0x9b7, 0x9f6 ;
+  message `0x0004` (écriture « critique ») : unité 0x9c7 avec le texte `-1:3:s1sl/s1sl_integration.c:2121`.
 - Journal du modem : `MMGSDI_CARD_INSERTED_EVT, slot: 0x1` (carte SIM détectée),
   `MMGSDI_PIN1_EVT`, `SIM Lock response message not supported(status=1)`.
 
-Prochaine étape : un vrai service MiscTA qui lit une copie de la partition TA.
+### Service MiscTA (12/10/2026)
+
+Format relevé dans les binaires Sony de LineageOS (`ta_qmi_service`, `tad` ; noms de
+fonctions dans leur section `.gnu_debugdata`), analysés localement, non publiés.
+
+**Messages** (tables IDL de `miscta_qmi_idl_service_object_v01`, service 0xe4 v1) :
+
+| Message | Requête | Réponse |
+|---|---|---|
+| 0x0001 taille | TLV1 u32 unité | TLV1 u32 code ; TLV 0x10 u32 taille |
+| 0x0002 lecture | TLV1 u32 unité | TLV1 u32 code ; TLV 0x10 u16 n + données (≤ 4096) |
+| 0x0003 écriture | TLV1 u32 unité ; TLV2 u16 n + données | TLV1 u32 code |
+| 0x0004 écriture « critique » | idem | TLV1 u32 code |
+| 0x0005 vidage | (vide) | TLV1 u32 code |
+
+Codes de `libmiscta` : 0 succès, 2 unité introuvable, 3 erreur, 4 tampon trop petit.
+Une unité absente a la taille 0 (code 0). Pas de TLV 0x02 « résultat » standard.
+
+**Partition TA** (2 Mio, blocs de 128 Kio) — en-tête de bloc de 12 octets : magique
+`0x3BF8E9C1`, Adler-32 de l'octet 8 à la fin utile, type, n° de bloc, partition
+(1 : clés DRM, 2 : misc = MiscTA), pages de 2 Kio utilisées (fin utile = (n+1)×2 Kio,
+0xff = bloc entier). Puis les unités : `{u32 id, u32 taille, u32 0x3BF8E9C1, u32}`,
+données, bourrage à 4 octets.
+
+**Mise en place** :
+
+1. Sous LineageOS, depuis le PC : `scripts/copier-ta-adb.sh` (lecture seule) →
+   `ta-akatsuki/ta.img`. ⚠️ Fichier personnel (clés DRM) : à garder, jamais publié.
+2. Sous Arch : `install -d -m 700 /var/lib/miscta && install -m 600 ta.img /var/lib/miscta/`.
+3. Vérifier : `qmi-ecoute.py --ta-lister` (blocs, sommes, unités de la partition 2 ;
+   la partition 1 n'est jamais affichée).
+4. Mettre à jour le programme : `install -m 755 scripts/qmi-ecoute.py /usr/local/bin/`,
+   redémarrer, puis `journalctl -u akatsuki-qmi-sony -b | grep MiscTA`.
+
+Le service ne modifie jamais `ta.img` : les écritures du modem vont dans
+`/var/lib/miscta/ecrits/<unité>.bin` et sont relues en priorité.
 
 ### Wi-Fi : le firmware plante à la création de l'interface (11/10/2026)
 
