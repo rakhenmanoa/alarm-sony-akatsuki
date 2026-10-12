@@ -12,8 +12,8 @@
 #
 # Ce que fait le script :
 #   1. installe dans /usr/lib/firmware les firmwares VALIDÉS seulement
-#      (adsp, cdsp, mba, modem, wlanmdsp, ipa_fws) — pas venus (redémarrage
-#      immédiat), ni slpi ni a630_zap (pas encore essayés) ;
+#      (adsp, cdsp, mba, modem, wlanmdsp, ipa_fws, a630_zap) — pas venus (redémarrage
+#      immédiat), ni slpi (pas encore essayé) ;
 #   2. installe le module ath10k_core corrigé (sans « quiet mode ») ;
 #   3. installe qmi-ecoute.py, akatsuki-modem-essai.sh, les services systemd
 #      (akatsuki-qmi-sony, akatsuki-tqftpserv, akatsuki-modem), la configuration
@@ -42,7 +42,7 @@ done
 
 echo "== 1. Firmwares validés → $DST"
 install -d "$DST"
-for f in adsp cdsp mba modem wlanmdsp ipa_fws; do
+for f in adsp cdsp mba modem wlanmdsp ipa_fws a630_zap; do
 	if [ -f "$FW/$f.mbn" ]; then
 		install -m 644 "$FW/$f.mbn" "$DST/$f.mbn" && echo "   $f.mbn"
 	elif [ -f "$DST/$f.mbn" ]; then
@@ -51,7 +51,7 @@ for f in adsp cdsp mba modem wlanmdsp ipa_fws; do
 		die "$f.mbn absent de $FW."
 	fi
 done
-for f in venus slpi a630_zap; do
+for f in venus slpi; do
 	[ -f "$DST/$f.mbn" ] && echo "   Attention : $DST/$f.mbn présent (non validé, à retirer en cas de souci)."
 done
 

@@ -89,3 +89,15 @@ M=/usr/lib/modules/$(uname -r)
 install -D -m 644 /root/panel-lgd-lh599qh3-edb1.ko /root/atmel_mxt_ts.ko -t $M/updates/
 depmod -a
 ```
+
+## GPU — ✅ firmware accepté (12/10/2026)
+
+Essai sans risque : module du panneau mis en liste noire le temps d'un démarrage
+(`/etc/modprobe.d/essai-gpu.conf`), chemin des firmwares de session réglé, puis
+`modprobe panel_lgd_lh599qh3_edb1` (l'affichage et le GPU démarrent à ce moment-là).
+Résultat : `a630_sqe.fw`, `a630_gmu.bin` chargés, plus d'erreur sur `a630_zap.mbn`
+ni `gpu hw init failed`, pas de redémarrage. `a630_zap.mbn` fait désormais partie
+des firmwares installés par `installer-demarrage-auto.sh`.
+
+⚠️ Ne pas détacher/rattacher `msm_dpu` à chaud (`unbind`/`bind`) : le pilote ne
+libère pas tout et le GPU échoue ensuite (`-28`) jusqu'au redémarrage.
