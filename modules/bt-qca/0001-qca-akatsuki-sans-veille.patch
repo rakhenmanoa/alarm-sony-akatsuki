@@ -1,0 +1,97 @@
+--- a/drivers/bluetooth/btqca.c
++++ b/drivers/bluetooth/btqca.c
+@@ -13,6 +13,19 @@
+ 
+ #include "btqca.h"
+ 
++/*
++ * Akatsuki (Xperia XZ3) : le WCN3990 ne répond plus après le chargement de la
++ * NVM de Sony si on y active la veille (aucun HCI_IBS_WAKE_ACK). Ces options
++ * laissent la NVM telle que fournie.
++ */
++static bool nvm_no_ibs;
++module_param(nvm_no_ibs, bool, 0644);
++MODULE_PARM_DESC(nvm_no_ibs, "Ne pas activer la veille IBS dans la NVM");
++
++static bool nvm_no_deep_sleep;
++module_param(nvm_no_deep_sleep, bool, 0644);
++MODULE_PARM_DESC(nvm_no_deep_sleep, "Ne pas activer la veille profonde dans la NVM");
++
+ int qca_read_soc_version(struct hci_dev *hdev, struct qca_btsoc_version *ver,
+ 			 enum qca_btsoc_type soc_type)
+ {
+@@ -440,7 +453,9 @@
+ 				 * enabling software inband sleep
+ 				 * onto controller side.
+ 				 */
+-				tlv_nvm->data[0] |= 0x80;
++				BT_INFO("QCA NVM HCI tag (origine): %*ph", min_t(int, tag_len, 16), tlv_nvm->data);
++				if (!nvm_no_ibs)
++					tlv_nvm->data[0] |= 0x80;
+ 
+ 				/* UART Baud Rate */
+ 				if (soc_type >= QCA_WCN3991)
+@@ -457,7 +472,9 @@
+ 				/* Sleep enable mask
+ 				 * enabling deep sleep feature on controller.
+ 				 */
+-				tlv_nvm->data[0] |= 0x01;
++				BT_INFO("QCA NVM deep sleep tag (origine): %*ph", min_t(int, tag_len, 16), tlv_nvm->data);
++				if (!nvm_no_deep_sleep)
++					tlv_nvm->data[0] |= 0x01;
+ 
+ 				break;
+ 			}
+--- a/drivers/bluetooth/hci_qca.c
++++ b/drivers/bluetooth/hci_qca.c
+@@ -41,6 +41,11 @@
+ #include "hci_uart.h"
+ #include "btqca.h"
+ 
++/* Akatsuki : garder la veille IBS désactivée côté hôte (voir btqca.nvm_no_ibs). */
++static bool qca_no_ibs;
++module_param(qca_no_ibs, bool, 0644);
++MODULE_PARM_DESC(qca_no_ibs, "Ne jamais activer la veille IBS (WCN399x)");
++
+ /* HCI_IBS protocol messages */
+ #define HCI_IBS_SLEEP_IND	0xFE
+ #define HCI_IBS_WAKE_IND	0xFD
+@@ -1109,7 +1114,8 @@
+ 				qca->memdump_state = QCA_MEMDUMP_COLLECTED;
+ 				cancel_delayed_work(&qca->ctrl_memdump_timeout);
+ 				clear_and_wake_up_bit(QCA_MEMDUMP_COLLECTION, &qca->flags);
+-				clear_bit(QCA_IBS_DISABLED, &qca->flags);
++				if (!qca_no_ibs)
++					clear_bit(QCA_IBS_DISABLED, &qca->flags);
+ 				mutex_unlock(&qca->hci_memdump_lock);
+ 				return;
+ 			}
+@@ -1685,7 +1691,8 @@
+ 		msleep(50);
+ 
+ 		clear_bit(QCA_SSR_TRIGGERED, &qca->flags);
+-		clear_bit(QCA_IBS_DISABLED, &qca->flags);
++		if (!qca_no_ibs)
++			clear_bit(QCA_IBS_DISABLED, &qca->flags);
+ 
+ 		qca->tx_ibs_state = HCI_IBS_TX_AWAKE;
+ 		qca->memdump_state = QCA_MEMDUMP_IDLE;
+@@ -2027,7 +2034,8 @@
+ 	ret = qca_uart_setup(hdev, qca_baudrate, soc_type, ver,
+ 			firmware_name, rampatch_name);
+ 	if (!ret) {
+-		clear_bit(QCA_IBS_DISABLED, &qca->flags);
++		if (!qca_no_ibs)
++			clear_bit(QCA_IBS_DISABLED, &qca->flags);
+ 		qca_debugfs_init(hdev);
+ 		hu->hdev->hw_error = qca_hw_error;
+ 		hu->hdev->reset = qca_reset;
+@@ -2655,7 +2663,7 @@
+ 	/* if BT SoC is running with default firmware then it does not
+ 	 * support in-band sleep
+ 	 */
+-	if (test_bit(QCA_ROM_FW, &qca->flags))
++	if (test_bit(QCA_ROM_FW, &qca->flags) || qca_no_ibs)
+ 		return 0;
+ 
+ 	/* During SSR after memory dump collection, controller will be
