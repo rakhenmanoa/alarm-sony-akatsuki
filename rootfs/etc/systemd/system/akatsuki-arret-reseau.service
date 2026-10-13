@@ -1,0 +1,19 @@
+# Xperia XZ3 : à l'arrêt, couper le Wi-Fi et le modem proprement AVANT d'arrêter le
+# modem (akatsuki-modem). Le firmware Wi-Fi tourne dans le modem : arrêté en premier,
+# il laissait le Wi-Fi et ModemManager sans réponse (« wlan0: failed to remove key …
+# (-108) », « qcom-q6v5-mss: timeout waiting for ssctl service », « port failed
+# halt », relevés le 13/10/2026).
+# Démarré après akatsuki-modem, donc arrêté avant lui ; rien n'en dépend au démarrage.
+[Unit]
+Description=Arrêt ordonné du Wi-Fi et du modem (Xperia XZ3)
+After=akatsuki-modem.service NetworkManager.service ModemManager.service iwd.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/true
+ExecStop=-/bin/sh -c 'ip link set wlan0 down 2>/dev/null; for m in $$(mmcli -L 2>/dev/null | grep -o "Modem/[0-9]*" | cut -d/ -f2); do timeout 5 mmcli -m "$$m" --disable >/dev/null 2>&1; done; true'
+TimeoutStopSec=12s
+
+[Install]
+WantedBy=multi-user.target
