@@ -18,8 +18,11 @@ pas = taille // H                      # octets par ligne (avec bourrage)
 img = d[taille * (n - 1): taille * n]
 
 
-def px(x, y):                          # 8 bits de poids fort
-    return img[y * pas + (x // 4) * 5 + (x % 4)]
+NOIR = 16                              # niveau de noir (64 sur 10 bits)
+
+
+def px(x, y):                          # 8 bits de poids fort, noir soustrait
+    return max(0, img[y * pas + (x // 4) * 5 + (x % 4)] - NOIR)
 
 
 pos = {c: [] for c in "RGB"}
@@ -37,7 +40,9 @@ for by in range(h):
         pix.append(v)
 m = [sum(p[i] for p in pix) / len(pix) for i in range(3)]
 g = [128 / max(x, 1) for x in m]       # balance des blancs « monde gris » + exposition
-sys.stderr.write("moyennes R G B : %.1f %.1f %.1f ; pas %d octets/ligne\n" % (*m, pas))
+sys.stderr.write("moyennes R G B (noir soustrait, sur 239) : %.1f %.1f %.1f ; pas %d octets/ligne\n" % (*m, pas))
+if max(m) < 2:
+    sys.stderr.write("image noire : objectif couvert, exposition trop courte ou capteur sans lumière\n")
 out = bytearray(b"P6\n%d %d\n255\n" % (w, h))
 for p in pix:
     for i in range(3):
