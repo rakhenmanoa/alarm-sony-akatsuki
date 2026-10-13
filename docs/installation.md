@@ -40,6 +40,11 @@ Lecture seule côté téléphone. Résultat dans `akatsuki-perso/` : firmwares S
 (modem, DSP, GPU, Wi-Fi, capteurs), EFS du modem, partition TA (SIM Sony, adresses
 MAC), Bluetooth et configuration des capteurs.
 
+À la fin, le script ouvre l'appareil photo de LineageOS : prendre **une** photo avec la
+caméra arrière, fermer l'application, appuyer sur Entrée. Il enregistre ainsi les
+réglages du capteur arrière (`imx400-akatsuki.bin`, sans lequel la caméra arrière
+n'est pas activée). `SANS_CAMERA=1` pour sauter cette étape.
+
 ## 2. Patcher le noyau pmOS et préparer la carte SD
 
 Télécharger Arch Linux ARM et le noyau postmarketOS. Les modules précompilés et les
@@ -122,6 +127,7 @@ Plasma Mobile s'ouvre. Wi-Fi et données mobiles : panneau réseau de Plasma.
 | Bluetooth | `bluetoothctl show` → `Powered: yes`, adresse d'origine |
 | Capteurs, rotation | `monitor-sensor` ; rotation automatique |
 | Caméra avant | plasma-camera |
+| Caméra arrière | `cam -l` (deux caméras) ; plasma-camera |
 | Lampe, LED | tuile « Lampe de poche » ; `/sys/class/leds/rgb:status` |
 | Horloge | éteindre, attendre, rallumer sans réseau : l'heure doit être juste |
 

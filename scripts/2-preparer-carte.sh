@@ -27,7 +27,10 @@ modules précompilés et correctifs non garantis (FORCER=1 pour passer outre)."
 fi
 
 echo "######## Image de démarrage"
-ECRAN=dsi AUDIO=1 CAMERA=1 VIBREUR=1 FLASH=1 CAPTEURS=1 SANS_VERROU=1 \
+# Caméra arrière seulement avec ses séquences (sinon CAMSS attendrait le capteur et
+# la caméra avant ne s'ouvrirait plus).
+arriere=0; [ -f "$perso/imx400-akatsuki.bin" ] && arriere=1
+CAMERA_ARRIERE=$arriere ECRAN=dsi AUDIO=1 CAMERA=1 VIBREUR=1 FLASH=1 CAPTEURS=1 SANS_VERROU=1 \
 	"$repo/test-boot/build.sh" "$apk" boot-akatsuki.img
 
 echo "######## Carte micro-SD"
@@ -53,6 +56,10 @@ src="$repo/modules/precompiles/$kver"
 [ -d "$src" ] || die "pas de modules précompilés pour le noyau $kver."
 install -D -m 644 "$src"/*.ko -t "$mnt/usr/lib/modules/$kver/updates/"
 command -v depmod >/dev/null && depmod -b "$mnt" "$kver"
+if [ "$arriere" = 1 ]; then
+	echo "######## Séquences de la caméra arrière"
+	install -D -m 644 "$perso/imx400-akatsuki.bin" "$mnt/usr/lib/firmware/sony/imx400-akatsuki.bin"
+fi
 
 sync
 echo
