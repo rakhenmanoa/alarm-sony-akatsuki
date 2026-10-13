@@ -37,7 +37,7 @@ Toutes à `llp` 5744, `pixel_rate` 2,667 GHz (VT : 8 MHz × 250 × 4 / 3 ; véri
 
 ## 2. Pilote
 
-- alimentations `vana` (GPIO 27), `vif` (vio, GPIO 12 du PMI8998), `vaf` (L19, 2,7 V),
+- alimentations `vana` (GPIO 27), `vif` (vio, GPIO 12 du PMI8998), `vaf` (L19, 2,7 V ; pas encore décrite dans le DTB : l'activer empêche le démarrage, voir le .dtsi),
   horloge MCLK0, reset GPIO 80 ; ordre de Sony ;
 - horloge à 24 MHz (le SDM845 ne sait pas faire les 8 MHz de Sony) : le pilote
   corrige `0x0136` et multiplie par 3 les pré-diviseurs des PLL (`0x0305`, `0x030d`) ;

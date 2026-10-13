@@ -15,6 +15,7 @@
  * (0x0114 = 3), RAW10, PLL de sortie 8 MHz × 169 = 1352 Mbit/s par voie
  * (link-frequency 676 MHz). Autre esclave 0x76 sur le même bus : stabilisateur /
  * autofocus (pas encore géré).
+ * L19 (vaf) : voir plus bas, laissée éteinte pour l'instant.
  * Horloge à 24 MHz : le contrôleur d'horloge ne sait pas faire 8 MHz ; le pilote
  * divise par 3 à l'entrée des PLL (mêmes fréquences internes).
  */
@@ -33,12 +34,6 @@
 };
 
 &{/soc@0/cci@ac4a000} {
-	status = "okay";
-};
-
-&{/soc@0/rsc@179c0000/regulators-0/ldo19} {
-	regulator-min-microvolt = <2700000>;
-	regulator-max-microvolt = <2700000>;
 	status = "okay";
 };
 
@@ -61,7 +56,13 @@
 
 		vana-supply = <&{/cam-vana-rear-regulator}>;
 		vif-supply = <&{/cam-vio-reagulator}>;
-		vaf-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo19}>;
+		/*
+		 * vaf (L19, 2,7 V) non décrite : activer L19 dans le DTB fait échouer tout le
+		 * pilote rpmh-regulator du PM8998 (« could not get current voltage »,
+		 * -ENOTRECOVERABLE, d'où status = "disabled" dans le DTS mainline) ; plus de
+		 * régulateurs, donc plus de carte SD : le téléphone ne démarre pas
+		 * (boot-arch-12, 13/10/2026). Le pilote prend alors un régulateur factice.
+		 */
 
 		orientation = <1>;					/* arrière */
 		rotation = <90>;
