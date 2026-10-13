@@ -8,10 +8,10 @@
 #   CAPTEUR=imx258 PHY=2 W=1048 H=780 sh scripts/tester-camera-arriere.sh   (avant, pour comparer)
 #
 # EXPO : exposition en lignes (défaut : maximum du mode) ; GAIN : gain analogique
-# 0…960 (défaut 480, soit ×1,9). Envoyer le dossier produit (journal + images).
+# ×1…×16 (défaut 2 ; codes 0…960 si le module est chargé avec gain_codes=1). Envoyer le dossier produit (journal + images).
 set -u
 out="${1:-/root/imx400-essai}"
-W="${W:-2528}"; H="${H:-1896}"; GAIN="${GAIN:-480}"
+W="${W:-2528}"; H="${H:-1896}"; GAIN="${GAIN:-2}"
 CAPTEUR="${CAPTEUR:-imx400}"; PHY="${PHY:-0}"
 mkdir -p "$out"
 command -v media-ctl >/dev/null || { echo "Installer v4l-utils (pacman -S v4l-utils)"; exit 1; }

@@ -54,6 +54,24 @@
 #define IMX400_EXPOSURE_MIN		1
 #define IMX400_EXPOSURE_OFFSET		22	/* fll - exposition : 21 chez Sony */
 #define IMX400_ANA_GAIN_MAX		960	/* 16x (gain = 1024 / (1024 - code)) */
+
+/*
+ * libcamera ne connaît pas l'IMX400 (pas de « camera sensor helper ») : il prend
+ * alors la valeur du contrôle de gain pour le gain lui-même (×1 = 1). Avec les codes
+ * du capteur (0…960) l'exposition automatique restait vers ×1, d'où des images 3 à 4
+ * fois trop sombres. Par défaut, le contrôle est donc le gain entier (1…16) ; le
+ * pilote le convertit en code. gain_codes=1 rend les codes bruts du capteur.
+ */
+static bool gain_codes;
+module_param(gain_codes, bool, 0444);
+MODULE_PARM_DESC(gain_codes, "gain analogique en codes du capteur (0…960) au lieu de ×1…×16");
+
+static u32 imx400_code_gain(s32 val)
+{
+	if (gain_codes)
+		return val;
+	return 1024 - 1024 / clamp_t(s32, val, 1, 16);
+}
 #define IMX400_DGTL_GAIN_MIN		0x100
 #define IMX400_DGTL_GAIN_MAX		0xfff
 #define IMX400_DGTL_GAIN_DEFAULT	0x100
@@ -333,7 +351,8 @@ static int imx400_set_ctrl(struct v4l2_ctrl *ctrl)
 		cci_write(imx400->regmap, IMX400_REG_EXPOSURE, ctrl->val, &ret);
 		break;
 	case V4L2_CID_ANALOGUE_GAIN:
-		cci_write(imx400->regmap, IMX400_REG_ANALOG_GAIN, ctrl->val, &ret);
+		cci_write(imx400->regmap, IMX400_REG_ANALOG_GAIN, imx400_code_gain(ctrl->val),
+			  &ret);
 		break;
 	case V4L2_CID_DIGITAL_GAIN:
 		cci_write(imx400->regmap, IMX400_REG_GROUP_HOLD, 1, &ret);
@@ -398,7 +417,8 @@ static int imx400_init_controls(struct imx400 *imx400)
 					     IMX400_EXPOSURE_MIN, exposure_max, 1,
 					     exposure_max / 2);
 	v4l2_ctrl_new_std(hdl, &imx400_ctrl_ops, V4L2_CID_ANALOGUE_GAIN,
-			  0, IMX400_ANA_GAIN_MAX, 1, 0);
+			  gain_codes ? 0 : 1, gain_codes ? IMX400_ANA_GAIN_MAX : 16, 1,
+			  gain_codes ? 0 : 1);
 	v4l2_ctrl_new_std(hdl, &imx400_ctrl_ops, V4L2_CID_DIGITAL_GAIN,
 			  IMX400_DGTL_GAIN_MIN, IMX400_DGTL_GAIN_MAX, 1,
 			  IMX400_DGTL_GAIN_DEFAULT);
