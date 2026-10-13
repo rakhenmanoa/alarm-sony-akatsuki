@@ -5,7 +5,7 @@ Les Releases du dépôt contiennent un système Arch Linux ARM + Plasma Mobile d
 configuré et une image de démarrage générique : il ne reste qu'à y ajouter les fichiers
 propres à **votre** téléphone (firmwares Sony, EFS, TA), récupérés sous LineageOS.
 
-Installation complète, étape par étape, sans les images : [installation.md](installation.md).
+Installation en 4 étapes, sans les images du système : [installation.md](installation.md).
 
 > ⚠️ Ne flasher que l'image de démarrage des Releases ou une image construite par les
 > scripts du dépôt (garde-fou UFS : voir le [README](../README.md)).

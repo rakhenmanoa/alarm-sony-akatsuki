@@ -13,7 +13,9 @@
 # les coprocesseurs (modem, DSP, SLPI) démarrent avec leurs firmwares.
 # Refaire l'installation : rm /var/lib/akatsuki/perso-installe ; reboot
 set -u
-P=/mnt/partage
+# AKATSUKI_PERSO=dossier : autre emplacement (scripts/4-installer-systeme.sh) ;
+# SANS_REDEMARRAGE=1 : ne pas redémarrer à la fin.
+P="${AKATSUKI_PERSO:-/mnt/partage}"
 fait=/var/lib/akatsuki/perso-installe
 log() { echo "akatsuki-perso : $*"; }
 
@@ -80,4 +82,4 @@ install -d /var/lib/akatsuki
 date > "$fait"
 sync
 log "installé ; redémarrage pour démarrer les coprocesseurs avec leurs firmwares"
-systemctl --no-block reboot
+[ "${SANS_REDEMARRAGE:-0}" = 1 ] || systemctl --no-block reboot

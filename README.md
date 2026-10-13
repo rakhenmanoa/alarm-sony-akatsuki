@@ -59,7 +59,8 @@ Le correctif Sony existe dans le noyau d'origine (commit `cfd1489` du noyau Sail
 | `rootfs/` | Configuration copiée sur la carte : gadget USB NCM et surveillance de la connexion, `systemd-networkd` (172.16.42.1), `fstab`, nom d'hôte |
 | `docs/installation-rapide.md` | **Installation rapide** avec les images des Releases (`scripts/preparer-telephone.sh`) |
 | `docs/publier-release.md` | Fabriquer et publier les images (`scripts/creer-image-systeme.sh`) |
-| `docs/installation.md` | **Installation pas à pas** depuis un XZ3 sous LineageOS déverrouillé |
+| `docs/installation.md` | **Installation en 4 étapes** (`scripts/1-copier-los.sh` … `4-installer-systeme.sh`) |
+| `docs/installation-manuelle.md` | Installation détaillée, script par script, et dépannage |
 | `docs/etat-des-lieux.md` | Ce qui fonctionne déjà, ce qui manque, sources |
 | `docs/noyau-pmos-7.1.md` | Analyse du noyau pmOS 7.1 et de son DTB (décompilé dans `docs/dts/`) |
 | `docs/patches-petr-hodina.md` | Inventaire des patches de Petr Hodina (fusionnés, en attente, à récupérer) |
@@ -91,10 +92,12 @@ Repris du portage Mobile NixOS (famille `sdm845-mainline`) :
 
 ## Installation — Arch Linux ARM
 
-**Installation rapide avec les images des Releases : [docs/installation-rapide.md](docs/installation-rapide.md).**
+**Installation en 4 étapes, d'un XZ3 sous LineageOS déverrouillé jusqu'à Plasma Mobile :
+[docs/installation.md](docs/installation.md)** (copier les fichiers de LineageOS, préparer
+la carte, flasher, installer le reste depuis internet).
 
-**Guide complet pas à pas, d'un XZ3 sous LineageOS déverrouillé jusqu'à Plasma Mobile :
-[docs/installation.md](docs/installation.md).**
+Variantes : avec les images des Releases ([installation-rapide.md](docs/installation-rapide.md)),
+ou tout à la main ([installation-manuelle.md](docs/installation-manuelle.md)).
 
 **Le plus simple pour commencer : [docs/premier-demarrage.md](docs/premier-demarrage.md)**
 (carte SD préparée par script, sans initramfs ni paquet à construire).

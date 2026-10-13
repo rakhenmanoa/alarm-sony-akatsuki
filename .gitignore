@@ -30,3 +30,6 @@ ta-akatsuki/
 audio-akatsuki/
 audio-akatsuki.tar.gz
 blobs-akatsuki/
+akatsuki-perso/
+akatsuki-systeme-*
+.systeme.*
