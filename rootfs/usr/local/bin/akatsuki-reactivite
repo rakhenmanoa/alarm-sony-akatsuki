@@ -1,33 +1,70 @@
 #!/bin/sh
-# akatsuki-reactivite — Réglages de réactivité du Xperia XZ3 (au démarrage).
-# Le système vit sur la carte micro-SD : c'est souvent elle qui ralentit le
-# lancement des applications. Le processeur et le GPU montaient aussi en
-# fréquence avec retard (relevé du 12/10/2026 : petit cœur à 748 MHz, GPU à
-# 257 MHz au repos, aucune surchauffe).
+# akatsuki-reactivite — Réglages processeur / GPU / carte SD du Xperia XZ3, appliqués
+# au démarrage selon le profil choisi (/etc/akatsuki/reactivite).
 #
-#   CPU : schedutil réagit plus vite (rate_limit_us 500) ; petits cœurs ≥ ~1 GHz.
-#   GPU : fréquence minimale relevée d'un cran (moins de saccades au défilement).
-#   Carte SD : ordonnanceur BFQ (priorité aux applications interactives),
-#   lecture anticipée 1 Mio.
-# Coût : un peu plus de consommation. Désactiver :
-#   systemctl disable --now akatsuki-reactivite ; reboot
+#   akatsuki-reactivite            applique le profil enregistré (défaut : frais)
+#   akatsuki-reactivite frais      enregistre et applique « frais »
+#   akatsuki-reactivite reactif    enregistre et applique « réactif »
+#
+# frais (13/10/2026, le téléphone chauffait) :
+#   CPU : gouverneur ondemand, fréquences minimales d'origine, grands cœurs plafonnés
+#         vers 2 GHz (au lieu de 2,8) ;
+#   GPU : fréquence minimale la plus basse, maximale plafonnée vers 520 MHz (au lieu
+#         de 710) : l'interface reste fluide, les pointes de chauffe disparaissent.
+# reactif (12/10/2026 : le téléphone était lent à réagir) :
+#   CPU : schedutil réactif (rate_limit_us 500), petits cœurs ≥ ~1 GHz, sans plafond ;
+#   GPU : minimum relevé d'un cran, sans plafond.
+# Les deux : carte SD en BFQ (priorité aux applications), lecture anticipée 1 Mio.
+# Désactiver tout : systemctl disable --now akatsuki-reactivite ; reboot
 set -u
+conf=/etc/akatsuki/reactivite
+case "${1:-}" in
+	frais|reactif) install -d /etc/akatsuki; echo "$1" > "$conf" ;;
+	"") ;;
+	*) echo "usage : $0 [frais|reactif]" >&2; exit 2 ;;
+esac
+profil=$(cat "$conf" 2>/dev/null || echo frais)
+
 ecrit() { [ -w "$1" ] && echo "$2" > "$1" 2>/dev/null; }
+# freq <fichier de fréquences> <rang> : rang 1 = la plus basse, « max » = la plus haute,
+# « <=N » = la plus haute ne dépassant pas N
+freq() {
+	tr ' ' '\n' < "$1" | grep . | sort -n | case "$2" in
+		max) tail -n 1 ;;
+		"<="*) awk -v n="${2#<=}" '$1 <= n { f = $1 } END { print f }' ;;
+		*) sed -n "$2p" ;;
+	esac
+}
 
 for p in /sys/devices/system/cpu/cpufreq/policy*; do
-	ecrit "$p/schedutil/rate_limit_us" 500
+	fr="$p/scaling_available_frequencies"
+	[ -r "$fr" ] || continue
+	ecrit "$p/scaling_max_freq" "$(freq "$fr" max)"
+	ecrit "$p/scaling_min_freq" "$(freq "$fr" 1)"
+	if [ "$profil" = frais ]; then
+		ecrit "$p/scaling_governor" ondemand
+		# grands cœurs (policy4) : ~2 GHz au plus
+		[ "${p##*policy}" -ge 4 ] && ecrit "$p/scaling_max_freq" "$(freq "$fr" '<=2000000')"
+	else
+		ecrit "$p/scaling_governor" schedutil
+		ecrit "$p/schedutil/rate_limit_us" 500
+		[ "${p##*policy}" = 0 ] && \
+			ecrit "$p/scaling_min_freq" "$(tr ' ' '\n' < "$fr" | sort -n | awk '$1 >= 1000000 {print; exit}')"
+	fi
 done
-# Petits cœurs : plus basse fréquence disponible ≥ 1 GHz
-p0=/sys/devices/system/cpu/cpufreq/policy0
-if [ -r "$p0/scaling_available_frequencies" ]; then
-	f=$(tr ' ' '\n' < "$p0/scaling_available_frequencies" | sort -n | awk '$1 >= 1000000 {print; exit}')
-	[ -n "$f" ] && ecrit "$p0/scaling_min_freq" "$f"
-fi
 
 for g in /sys/class/devfreq/*.gpu; do
-	[ -r "$g/available_frequencies" ] || continue
-	f=$(tr ' ' '\n' < "$g/available_frequencies" | grep . | sort -n | sed -n 2p)
-	[ -n "$f" ] && ecrit "$g/min_freq" "$f"
+	fr="$g/available_frequencies"
+	[ -r "$fr" ] || continue
+	ecrit "$g/governor" simple_ondemand
+	# ordre : d'abord le minimum au plus bas, puis le maximum, puis le minimum voulu
+	ecrit "$g/min_freq" "$(freq "$fr" 1)"
+	if [ "$profil" = frais ]; then
+		ecrit "$g/max_freq" "$(freq "$fr" '<=520000000')"
+	else
+		ecrit "$g/max_freq" "$(freq "$fr" max)"
+		ecrit "$g/min_freq" "$(freq "$fr" 2)"
+	fi
 done
 
 for q in /sys/block/mmcblk*/queue; do
@@ -35,5 +72,8 @@ for q in /sys/block/mmcblk*/queue; do
 	ecrit "$q/read_ahead_kb" 1024
 done
 
-echo "CPU min : $(cat $p0/scaling_min_freq 2>/dev/null) ; GPU min : $(cat /sys/class/devfreq/*.gpu/min_freq 2>/dev/null) ;" \
-	"SD : $(cat /sys/block/mmcblk0/queue/scheduler 2>/dev/null)"
+c=/sys/devices/system/cpu/cpufreq
+echo "profil $profil ; CPU : $(cat $c/policy0/scaling_governor 2>/dev/null)," \
+	"petits $(cat $c/policy0/scaling_min_freq 2>/dev/null)-$(cat $c/policy0/scaling_max_freq 2>/dev/null)," \
+	"grands max $(cat $c/policy4/scaling_max_freq 2>/dev/null) ;" \
+	"GPU : $(cat /sys/class/devfreq/*.gpu/min_freq 2>/dev/null)-$(cat /sys/class/devfreq/*.gpu/max_freq 2>/dev/null)"
