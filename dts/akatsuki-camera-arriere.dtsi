@@ -65,7 +65,7 @@
 		 */
 
 		orientation = <1>;					/* arrière */
-		rotation = <90>;
+		rotation = <270>;					/* comme l'avant ; 90 donnait une image à l'envers (13/10/2026) */
 
 		port {
 			imx400_ep: endpoint {
