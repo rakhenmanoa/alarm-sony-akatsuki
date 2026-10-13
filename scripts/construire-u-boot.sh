@@ -53,8 +53,11 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$outils" "$tmp"' EXIT
 dtc -q -I dts -O dtb -o "$tmp/u-boot.dtb" "$tmp/u-boot.dts"
 "$here/check-dtb-ufs.sh" "$tmp/u-boot.dtb"
 
-gzip -9nc "$b/u-boot-nodtb.bin" > "$tmp/u-boot.gz"
-: > "$tmp/vide"
-"$here/make-bootimg.sh" "$tmp/u-boot.gz" "$tmp/u-boot.dtb" "$tmp/vide" "$out" "u-boot" >/dev/null
+# TEXT_OFFSET à 0 dans l'en-tête Image (voir u-boot/entete-image.py)
+python3 "$repo/u-boot/entete-image.py" "$b/u-boot-nodtb.bin" "$tmp/u-boot.bin"
+gzip -9nc "$tmp/u-boot.bin" > "$tmp/u-boot.gz"
+# Le chargeur de Sony peut refuser une image sans ramdisk : archive cpio vide (fin seule)
+python3 -c 'import sys,gzip; h=b"070701"+b"%08X"*13 % (0,0,0,0,1,0,0,0,0,0,0,11,0)+b"TRAILER!!!\0"; h+=b"\0"*(-len(h)%4); h+=b"\0"*(-len(h)%512); sys.stdout.buffer.write(gzip.compress(h,9,mtime=0))' > "$tmp/ramdisk"
+"$here/make-bootimg.sh" "$tmp/u-boot.gz" "$tmp/u-boot.dtb" "$tmp/ramdisk" "$out" "u-boot" >/dev/null
 echo "U-Boot $tag : $out ($(sha256sum "$out" | cut -c1-8))"
 echo "Essai sans risque : fastboot boot $out"
