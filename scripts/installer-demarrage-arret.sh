@@ -7,7 +7,7 @@
 #   - arrêt du modem borné ;
 #   - services « attendre le réseau » masqués (bloquent le démarrage jusqu'à 2 min) ;
 #   - à l'arrêt : Wi-Fi et modem coupés avant le modem (akatsuki-arret-reseau) ;
-#   - moins de bruit : erreurs répétitives de Plasma Mobile filtrées, PowerDevil sans DDC/CI, générateur ostree inutile masqué,
+#   - moins de bruit : PowerDevil sans DDC/CI, générateur ostree inutile masqué,
 #     seules les erreurs graves du noyau affichées à l'écran.
 # En root, depuis une copie du dépôt. Retour arrière : supprimer les fichiers listés.
 set -eu
@@ -22,8 +22,10 @@ done
 for u in systemd-networkd-wait-online.service NetworkManager-wait-online.service; do
 	systemctl mask "$u" >/dev/null 2>&1 && echo "   masqué : $u"
 done
-install -D -m 644 "$here/../rootfs/etc/systemd/user/plasma-plasmashell.service.d/10-akatsuki-journal.conf" \
-	/etc/systemd/user/plasma-plasmashell.service.d/10-akatsuki-journal.conf
+# (filtre du journal de plasmashell retiré à la demande : les erreurs de Plasma Mobile
+# restent visibles pour un éventuel rapport de bogue à KDE)
+rm -f /etc/systemd/user/plasma-plasmashell.service.d/10-akatsuki-journal.conf
+rmdir /etc/systemd/user/plasma-plasmashell.service.d 2>/dev/null || true
 install -D -m 644 "$here/../rootfs/etc/environment.d/90-akatsuki-powerdevil.conf" /etc/environment.d/90-akatsuki-powerdevil.conf
 install -D -m 644 "$here/../rootfs/etc/sysctl.d/10-akatsuki-console.conf" /etc/sysctl.d/10-akatsuki-console.conf
 sysctl -q -p /etc/sysctl.d/10-akatsuki-console.conf || true
