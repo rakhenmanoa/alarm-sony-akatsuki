@@ -57,6 +57,7 @@ Le correctif Sony existe dans le noyau d'origine (commit `cfd1489` du noyau Sail
 | `sdcard/NE-PAS-FORMATER.txt` | Avertissement copié sur la partition d'échange de la carte, visible depuis Android |
 | `scripts/prepare-sdcard.sh` | Prépare la carte micro-SD : Arch (ext4) + partition d'échange exFAT (8 Go, `PARTAGE=` pour changer) que seule Android voit, modules pmOS, réseau USB (nombreux garde-fous) |
 | `rootfs/` | Configuration copiée sur la carte : gadget USB NCM et surveillance de la connexion, `systemd-networkd` (172.16.42.1), `fstab`, nom d'hôte |
+| `docs/installation.md` | **Installation pas à pas** depuis un XZ3 sous LineageOS déverrouillé |
 | `docs/etat-des-lieux.md` | Ce qui fonctionne déjà, ce qui manque, sources |
 | `docs/noyau-pmos-7.1.md` | Analyse du noyau pmOS 7.1 et de son DTB (décompilé dans `docs/dts/`) |
 | `docs/patches-petr-hodina.md` | Inventaire des patches de Petr Hodina (fusionnés, en attente, à récupérer) |
@@ -87,6 +88,9 @@ Repris du portage Mobile NixOS (famille `sdm845-mainline`) :
 | Slots | A/B |
 
 ## Installation — Arch Linux ARM
+
+**Guide complet pas à pas, d'un XZ3 sous LineageOS déverrouillé jusqu'à Plasma Mobile :
+[docs/installation.md](docs/installation.md).**
 
 **Le plus simple pour commencer : [docs/premier-demarrage.md](docs/premier-demarrage.md)**
 (carte SD préparée par script, sans initramfs ni paquet à construire).
