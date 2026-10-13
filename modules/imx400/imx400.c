@@ -62,6 +62,19 @@
 
 #define IMX400_MAX_MODES		8
 
+/*
+ * CAMSS (SDM845) : la CSID remet l'horloge du VFE à 320 MHz puis exige
+ * pixel_rate × bpp / 64 × 1,05 ≤ cette horloge, sinon « Failed to power up
+ * pipeline: -16 » (13/10/2026). Avec les 2,667 Gpx/s du capteur il faudrait 437 MHz,
+ * alors que le lien CSI-2 n'en transporte que 541 Mpx/s. On annonce donc un
+ * pixel_rate plafonné et une longueur de ligne réduite d'autant : durée de ligne
+ * (llp / pixel_rate) inchangée tant que la largeur le permet (modes avec binning) ;
+ * en pleine définition la durée annoncée est un peu plus longue que la vraie.
+ */
+static unsigned int pixel_rate_max = 1900000000;
+module_param(pixel_rate_max, uint, 0444);
+MODULE_PARM_DESC(pixel_rate_max, "pixel_rate maximal annoncé (Hz), défaut 1,9 GHz");
+
 static const char * const imx400_supply_name[] = {
 	"vana",		/* 2,8 V analogique */
 	"vif",		/* 1,8 V E/S */
@@ -263,7 +276,18 @@ static int imx400_charger_sequences(struct imx400 *imx400, const char *nom)
 		    !m->pixel_rate || !m->link_freq ||
 		    m->link_freq != imx400->modes[0].link_freq)
 			goto invalide;
-		dev_info(dev, "mode %s : llp %u fll %u, %u Mpx/s\n", m->name, m->llp,
+		if (pixel_rate_max && m->pixel_rate > pixel_rate_max) {
+			u32 llp = div_u64((u64)m->llp * pixel_rate_max, m->pixel_rate);
+
+			if (llp < m->width + 64) {
+				dev_info(dev, "mode %s : durée de ligne annoncée approximative\n",
+					 m->name);
+				llp = m->width + 64;
+			}
+			m->llp = llp;
+			m->pixel_rate = pixel_rate_max;
+		}
+		dev_info(dev, "mode %s : llp annoncée %u, fll %u, %u Mpx/s\n", m->name, m->llp,
 			 m->fll, (u32)div_u64(m->pixel_rate, 1000000));
 	}
 	return 0;
