@@ -34,3 +34,5 @@ akatsuki-perso/
 akatsuki-systeme-*
 .systeme.*
 capture-camera/
+u-boot-src/
+u-boot-akatsuki.img

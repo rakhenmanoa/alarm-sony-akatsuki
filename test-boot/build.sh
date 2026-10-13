@@ -69,9 +69,23 @@ if [ "${SANS_VERROU:-0}" = 1 ]; then
 	noyau="$tmp/vmlinuz-sans-verrou"
 fi
 
+cmdline="console=tty0 console=ttyMSM0,115200 clk_ignore_unused pd_ignore_unused printk.devkmsg=on"
 echo "== boot.img"
 "$repo/scripts/make-bootimg.sh" "$noyau" "$tmp/akatsuki.dtb" \
-	"$tmp/initramfs.img" "$out" \
-	"console=tty0 console=ttyMSM0,115200 clk_ignore_unused pd_ignore_unused printk.devkmsg=on"
+	"$tmp/initramfs.img" "$out" "$cmdline"
+
+# GARDER=dossier : garder aussi les pièces séparées, pour U-Boot (installer-u-boot-carte.sh)
+if [ -n "${GARDER:-}" ]; then
+	mkdir -p "$GARDER"
+	if [ "$(od -An -tx1 -N2 "$noyau" | tr -d ' \n')" = "1f8b" ]; then
+		gzip -dc "$noyau" > "$GARDER/Image"
+	else
+		cp "$noyau" "$GARDER/Image"
+	fi
+	cp "$tmp/akatsuki.dtb" "$GARDER/akatsuki.dtb"
+	cp "$tmp/initramfs.img" "$GARDER/initramfs.img"
+	echo "$cmdline" > "$GARDER/cmdline"
+	echo "Pièces pour U-Boot : $GARDER (Image, akatsuki.dtb, initramfs.img, cmdline)"
+fi
 echo
 echo "Prêt : $out  →  fastboot boot $out"

@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Ajouts au DTB de U-Boot (akatsuki, DTB amont de U-Boot) : écran.
+ * Le chargeur de Sony laisse l'image de démarrage dans cont_splash (0x9d400000) ;
+ * le pilote simple-framebuffer de U-Boot lit « reg » (pas memory-region).
+ * NE JAMAIS activer ici l'UFS (vérifié par scripts/check-dtb-ufs.sh).
+ */
+/ {
+	chosen {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		framebuffer@9d400000 {
+			compatible = "simple-framebuffer";
+			reg = <0x0 0x9d400000 0x0 (1440 * 2880 * 4)>;
+			format = "a8r8g8b8";
+			stride = <(1440 * 4)>;
+			width = <1440>;
+			height = <2880>;
+		};
+	};
+};
