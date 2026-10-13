@@ -1,0 +1,14 @@
+# Image publiée : le trousseau de pacman (avec sa clé privée locale) n'y est pas ;
+# il est recréé au premier démarrage.
+[Unit]
+Description=Trousseau de pacman (premier démarrage)
+ConditionPathExists=!/etc/pacman.d/gnupg/trustdb.gpg
+After=local-fs.target time-set.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/pacman-key --init
+ExecStart=/usr/bin/pacman-key --populate archlinuxarm
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+# Adresse MAC Wi-Fi d'origine (lue dans la TA) : règle udev pour wlan0.
+[Unit]
+Description=Adresse MAC Wi-Fi d'origine du Xperia XZ3
+DefaultDependencies=no
+After=local-fs.target
+Before=systemd-udevd.service sysinit.target
+ConditionPathExists=/var/lib/miscta/ta.img
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/akatsuki-mac wifi
+
+[Install]
+WantedBy=sysinit.target

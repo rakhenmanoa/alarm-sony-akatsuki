@@ -1,0 +1,83 @@
+#!/bin/sh
+# akatsuki-perso — Installe, au démarrage, les fichiers propres au téléphone déposés
+# sur la partition d'échange de la carte par scripts/preparer-telephone.sh (PC,
+# LineageOS) : firmwares et fichiers Sony, EFS (IMEI), TA. Rien de tout ça n'est dans
+# l'image publiée du système.
+#
+#   /mnt/partage/firmware-akatsuki/   firmwares Sony (extraire-firmwares-adb.sh)
+#   /mnt/partage/efs-akatsuki/        données du modem (copier-efs-adb.sh)      → effacées après copie
+#   /mnt/partage/ta.img               partition TA (copier-ta-adb.sh)           → effacée après copie
+#   /mnt/partage/blobs-akatsuki/      Bluetooth, capteurs (sauver-blobs-adb.sh)
+#
+# Ne fait rien si ces dossiers sont absents. Redémarre une fois à la fin pour que
+# les coprocesseurs (modem, DSP, SLPI) démarrent avec leurs firmwares.
+# Refaire l'installation : rm /var/lib/akatsuki/perso-installe ; reboot
+set -u
+P=/mnt/partage
+fait=/var/lib/akatsuki/perso-installe
+log() { echo "akatsuki-perso : $*"; }
+
+[ -d "$P/firmware-akatsuki" ] || [ -d "$P/efs-akatsuki" ] || [ -f "$P/ta.img" ] || \
+	[ -d "$P/blobs-akatsuki" ] || exit 0
+[ -e "$fait" ] && [ ! -d "$P/efs-akatsuki" ] && [ ! -f "$P/ta.img" ] && exit 0
+change=0
+
+# --- Firmwares -------------------------------------------------------------------
+FW="$P/firmware-akatsuki"
+if [ -d "$FW" ]; then
+	src="$FW/qcom/sdm845/Sony/tama"; dst=/usr/lib/firmware/qcom/sdm845/Sony/tama
+	install -d "$dst"
+	# Validés sur le XZ3 ; venus.mbn (vidéo) fait redémarrer le téléphone : jamais.
+	for f in adsp cdsp mba modem wlanmdsp ipa_fws a630_zap slpi; do
+		[ -f "$src/$f.mbn" ] && install -m 644 "$src/$f.mbn" "$dst/$f.mbn" && log "firmware $f.mbn"
+	done
+	[ -d "$FW/updates" ] && cp -a "$FW/updates" /usr/lib/firmware/ && log "réglages Wi-Fi Sony (board-2.bin)"
+	[ -d "$FW/qca" ] && cp -a "$FW/qca" /usr/lib/firmware/ && log "réglages Bluetooth (crnv21.bin)"
+	change=1
+fi
+
+# --- Modem : EFS et TA (données personnelles : effacées de la carte après copie) ----
+if [ -d "$P/efs-akatsuki" ]; then
+	install -d -m 700 /var/lib/rmtfs
+	install -m 600 "$P"/efs-akatsuki/modem_fs* /var/lib/rmtfs/ && rm -rf "$P/efs-akatsuki" && log "EFS"
+	change=1
+fi
+if [ -f "$P/ta.img" ]; then
+	install -d -m 700 /var/lib/miscta
+	install -m 600 "$P/ta.img" /var/lib/miscta/ta.img && rm -f "$P/ta.img" && log "TA"
+	/usr/local/bin/akatsuki-mac wifi || true
+	change=1
+fi
+
+# --- Bluetooth et capteurs -----------------------------------------------------------
+B="$P/blobs-akatsuki"
+if [ -d "$B" ]; then
+	bt=$(find "$B/bt_firmware" -name crbtfw21.tlv 2>/dev/null | head -n 1)
+	# Firmware Bluetooth de Sony : celui de linux-firmware refuse LE Set Default PHY.
+	[ -n "$bt" ] && install -D -m 644 "$bt" /usr/lib/firmware/updates/qca/crbtfw21.tlv && log "firmware Bluetooth Sony"
+
+	d=/usr/share/qcom/sdm845/Sony/tama
+	trouve() { find "$B/$1" -type "$2" -path "*$3" 2>/dev/null | head -n 1; }
+	cfg=$(trouve etc-sensors d /config); reg=$(trouve persist-sensors d /registry/registry)
+	snsc=$(trouve etc-sensors f /sns_reg_config)
+	if [ -n "$cfg" ] && [ -n "$reg" ] && [ -n "$snsc" ]; then
+		install -d "$d/dsp" "$d/sensors" "$d/socinfo"
+		for s in "$B"/dsp/*; do [ -d "$s" ] && cp -a "$s"/. "$d/dsp/"; done
+		rm -rf "$d/sensors/config" "$d/sensors/registry"
+		cp -a "$cfg" "$d/sensors/config"; cp -a "$reg" "$d/sensors/registry"
+		install -m 644 "$snsc" "$d/sensors/sns_reg.conf"
+		# Valeurs de /sys/devices/soc0 sous LineageOS (filtre des configs JSON de Sony)
+		echo MTP > "$d/socinfo/hw_platform"; echo 321 > "$d/socinfo/soc_id"
+		echo Unknown > "$d/socinfo/platform_subtype"; echo 0 > "$d/socinfo/platform_subtype_id"
+		echo 65536 > "$d/socinfo/platform_version"; echo 2.1 > "$d/socinfo/revision"
+		log "configuration et étalonnage des capteurs"
+	fi
+	change=1
+fi
+
+[ "$change" = 1 ] || exit 0
+install -d /var/lib/akatsuki
+date > "$fait"
+sync
+log "installé ; redémarrage pour démarrer les coprocesseurs avec leurs firmwares"
+systemctl --no-block reboot

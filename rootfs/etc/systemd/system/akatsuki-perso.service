@@ -1,0 +1,14 @@
+# Installe au démarrage les fichiers propres au téléphone (firmwares Sony, EFS, TA,
+# Bluetooth, capteurs) déposés sur la carte par scripts/preparer-telephone.sh.
+[Unit]
+Description=Fichiers propres au Xperia XZ3 (firmwares, EFS, TA, capteurs)
+After=local-fs.target
+RequiresMountsFor=/mnt/partage
+Before=akatsuki-qmi-sony.service akatsuki-modem.service akatsuki-hexagonrpcd-sdsp.service bluetooth.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/akatsuki-perso
+
+[Install]
+WantedBy=multi-user.target

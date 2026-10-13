@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""akatsuki-mac — Adresses MAC d'origine du Xperia XZ3, appliquées au démarrage.
+
+Les adresses sont lues dans la copie de la partition TA (/var/lib/miscta/ta.img,
+unités 0xa00 Wi-Fi et 0xa08 Bluetooth, octets à l'envers) au lieu d'être écrites
+dans le DTB : l'image de démarrage reste la même pour tous les téléphones et peut
+être publiée.
+
+  akatsuki-mac wifi   écrit /etc/systemd/network/10-akatsuki-wlan.link (MACAddress=,
+                      appliqué par udev à la création de wlan0)
+  akatsuki-mac bt     donne l'adresse au contrôleur Bluetooth (btmgmt public-addr ;
+                      à refaire à chaque démarrage, le contrôleur ne la garde pas)
+"""
+import importlib.machinery
+import os
+import subprocess
+import sys
+
+TA = "/var/lib/miscta/ta.img"
+LINK = "/etc/systemd/network/10-akatsuki-wlan.link"
+
+
+def adresses():
+    if not os.path.exists(TA):
+        sys.exit("akatsuki-mac : %s absent (copie de la TA), rien à faire" % TA)
+    q = importlib.machinery.SourceFileLoader(
+        "qmi_ecoute", "/usr/local/bin/qmi-ecoute.py").load_module()
+    misc = q.TA(TA).misc()
+    res = {}
+    for nom, unite in (("wifi", 0xA00), ("bt", 0xA08)):
+        d = misc.get(unite)
+        if d and len(d) == 6:
+            res[nom] = ":".join("%02x" % b for b in reversed(d))
+    return res
+
+
+def wifi(mac):
+    texte = ("# Écrit par akatsuki-mac (adresse d'origine lue dans la TA). Ne pas publier.\n"
+             "[Match]\nDriver=ath10k_snoc\n\n[Link]\nNamePolicy=keep kernel\n"
+             "MACAddressPolicy=none\nMACAddress=%s\n" % mac)
+    try:
+        with open(LINK) as f:
+            if f.read() == texte:
+                return
+    except FileNotFoundError:
+        pass
+    with open(LINK, "w") as f:
+        f.write(texte)
+    os.chmod(LINK, 0o644)
+    print("Wi-Fi : %s (%s)" % (mac, LINK))
+
+
+def bt(mac):
+    for args in (["power", "off"], ["public-addr", mac], ["power", "on"]):
+        subprocess.run(["btmgmt", "--index", "0"] + args,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+    print("Bluetooth : %s" % mac)
+
+
+if __name__ == "__main__":
+    quoi = sys.argv[1] if len(sys.argv) > 1 else ""
+    a = adresses()
+    if quoi == "wifi" and "wifi" in a:
+        wifi(a["wifi"])
+    elif quoi == "bt" and "bt" in a:
+        bt(a["bt"])
+    elif quoi not in ("wifi", "bt"):
+        sys.exit("usage : akatsuki-mac wifi|bt")
