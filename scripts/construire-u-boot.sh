@@ -29,6 +29,15 @@ if [ ! -d "$src/.git" ]; then
 	git clone --depth 1 -b "$tag" https://github.com/u-boot/u-boot.git "$src"
 fi
 cp "$repo/u-boot/akatsuki.config" "$repo/u-boot/akatsuki.env" "$src/board/qualcomm/"
+# Correctifs propres à l'XZ3 (u-boot/patches), appliqués une seule fois
+for p in "$repo"/u-boot/patches/*.patch; do
+	[ -e "$p" ] || continue
+	if git -C "$src" apply --check "$p" 2>/dev/null; then
+		git -C "$src" apply "$p"; echo "correctif appliqué : $(basename "$p")"
+	elif ! git -C "$src" apply --check -R "$p" 2>/dev/null; then
+		die "le correctif $(basename "$p") ne s'applique pas sur $src"
+	fi
+done
 
 # Outils croisés : llvm à la place de binutils aarch64, clang avec son assembleur intégré
 outils="$(mktemp -d)"; trap 'rm -rf "$outils"' EXIT

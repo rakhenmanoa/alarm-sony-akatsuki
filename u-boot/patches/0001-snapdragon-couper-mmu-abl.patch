@@ -1,0 +1,48 @@
+--- a/arch/arm/mach-snapdragon/board.c
++++ b/arch/arm/mach-snapdragon/board.c
+@@ -13,6 +13,7 @@
+ #include <asm/gpio.h>
+ #include <asm/io.h>
+ #include <asm/psci.h>
++#include <asm/sections.h>
+ #include <asm/system.h>
+ #include <dm/device.h>
+ #include <dm/pinctrl.h>
+@@ -200,6 +201,28 @@
+ 		log_err("Failed to delete /psci node: %d\n", ret);
+ }
+ 
++/*
++ * Some Android bootloaders (seen on the Sony Xperia XZ3, SDM845) jump to the
++ * kernel with the MMU and data cache still enabled, using their own page tables
++ * which do not map all of DDR. Linux copes with this, but U-Boot would keep running
++ * on those tables and hang when relocating to the top of RAM. Clean everything we
++ * have written so far to the point of coherency and turn the MMU off, like Linux does.
++ */
++static void qcom_prevbl_mmu_off(void *fdt)
++{
++	unsigned long sctlr = get_sctlr();
++
++	if (!(sctlr & CR_M))
++		return;
++
++	__asm_flush_dcache_range((ulong)&_start,
++				 (ulong)__bss_start + CONFIG_SYS_INIT_SP_BSS_OFFSET);
++	if (fdt && !fdt_check_header(fdt))
++		__asm_flush_dcache_range((ulong)fdt, (ulong)fdt + fdt_totalsize(fdt));
++	set_sctlr(sctlr & ~(CR_M | CR_C));
++	__asm_invalidate_icache_all();
++}
++
+ /* We support booting U-Boot with an internal DT when running as a first-stage bootloader
+  * or for supporting quirky devices where it's easier to leave the downstream DT in place
+  * to improve ABL compatibility. Otherwise, we use the DT provided by ABL.
+@@ -212,6 +235,8 @@
+ 
+ 	internal_fdt = (struct fdt_header *)*fdtp;
+ 	external_fdt = (struct fdt_header *)get_prev_bl_fdt_addr();
++
++	qcom_prevbl_mmu_off(external_fdt);
+ 	external_valid = external_fdt && !fdt_check_header(external_fdt);
+ 	internal_valid = !fdt_check_header(internal_fdt);
+ 
