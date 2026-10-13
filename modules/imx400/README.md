@@ -47,7 +47,11 @@ Toutes à `llp` 5744, `pixel_rate` 2,667 GHz (VT : 8 MHz × 250 × 4 / 3 ; véri
   gain numérique (`0x020e`…), `vblank` (`0x0340`), `hblank` (fixe).
 
 Pas encore : autofocus et stabilisateur (puce 0x76 sur le même bus), retournement,
-données PDAF, ordre de Bayer à confirmer (RGGB supposé).
+données PDAF.
+
+Premier essai (13/10/2026, `boot-arch-13`) : flux 2528×1896 à la première tentative
+après le plafonnement du `pixel_rate` ; image nette de contenu mais floue (objectif au
+repos, sans autofocus) ; ordre de Bayer **RGGB** confirmé (bois orangé, peau).
 
 ```sh
 ~/noyau-7.1-rc1/construire-module.sh modules/imx400
