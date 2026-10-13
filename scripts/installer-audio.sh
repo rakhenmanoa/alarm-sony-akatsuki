@@ -6,7 +6,9 @@ set -eu
 [ "$(id -u)" -eq 0 ] || { echo "Erreur : lancer en root." >&2; exit 1; }
 here="$(cd "$(dirname "$0")" && pwd)"
 U=/usr/share/alsa/ucm2
-pacman -S --needed --noconfirm alsa-ucm-conf alsa-utils pipewire pipewire-pulse wireplumber
+# rtkit : priorité temps réel pour PipeWire (sans lui « RTKit error … ServiceUnknown »,
+# risque de grésillements quand le processeur est chargé)
+pacman -S --needed --noconfirm alsa-ucm-conf alsa-utils pipewire pipewire-pulse wireplumber rtkit
 install -d "$U/Sony/akatsuki" "$U/conf.d/sdm845"
 install -m 644 "$here/../rootfs$U/Sony/akatsuki/akatsuki.conf" "$here/../rootfs$U/Sony/akatsuki/HiFi.conf" "$U/Sony/akatsuki/"
 ln -sf ../../Sony/akatsuki/akatsuki.conf "$U/conf.d/sdm845/Sony-Xperia-XZ3.conf"
