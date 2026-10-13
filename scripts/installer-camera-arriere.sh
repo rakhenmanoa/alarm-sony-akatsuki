@@ -23,6 +23,8 @@ install -d "$d" /usr/lib/firmware/sony
 install -m 644 "$KO" "$d/imx400.ko"
 install -m 644 "$SEQ" /usr/lib/firmware/sony/imx400-akatsuki.bin
 install -m 644 "$here/../rootfs/etc/modprobe.d/akatsuki-cameras.conf" /etc/modprobe.d/
+install -m 644 "$here/../rootfs/etc/tmpfiles.d/akatsuki-udmabuf.conf" /etc/tmpfiles.d/
+systemd-tmpfiles --create /etc/tmpfiles.d/akatsuki-udmabuf.conf 2>/dev/null || true
 depmod -a
 pacman -S --needed --noconfirm v4l-utils >/dev/null 2>&1 || echo "   (v4l-utils : installer plus tard pour les essais)"
 modinfo -n imx400
