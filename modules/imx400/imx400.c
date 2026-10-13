@@ -50,6 +50,7 @@
 #define IMX400_REG_WB_GB		CCI_REG16(0x0b94)
 
 #define IMX400_FLL_MAX			0xffff
+#define IMX400_FPS_DEFAUT		30
 #define IMX400_EXPOSURE_MIN		1
 #define IMX400_EXPOSURE_OFFSET		22	/* fll - exposition : 21 chez Sony */
 #define IMX400_ANA_GAIN_MAX		960	/* 16x (gain = 1024 / (1024 - code)) */
@@ -88,6 +89,7 @@ struct imx400_mode {
 	u32 height;
 	u32 llp;
 	u32 fll;
+	u32 fll_def;	/* cadence par défaut : 30 i/s au plus (expositions jusqu'à 33 ms) */
 	struct v4l2_rect crop;
 	u64 pixel_rate;
 	u64 link_freq;
@@ -276,6 +278,8 @@ static int imx400_charger_sequences(struct imx400 *imx400, const char *nom)
 		    !m->pixel_rate || !m->link_freq ||
 		    m->link_freq != imx400->modes[0].link_freq)
 			goto invalide;
+		m->fll_def = clamp_t(u32, div_u64(m->pixel_rate, (u64)m->llp * IMX400_FPS_DEFAUT),
+				     m->fll, IMX400_FLL_MAX);
 		if (pixel_rate_max && m->pixel_rate > pixel_rate_max) {
 			u32 llp = div_u64((u64)m->llp * pixel_rate_max, m->pixel_rate);
 
@@ -287,8 +291,8 @@ static int imx400_charger_sequences(struct imx400 *imx400, const char *nom)
 			m->llp = llp;
 			m->pixel_rate = pixel_rate_max;
 		}
-		dev_info(dev, "mode %s : llp annoncée %u, fll %u, %u Mpx/s\n", m->name, m->llp,
-			 m->fll, (u32)div_u64(m->pixel_rate, 1000000));
+		dev_info(dev, "mode %s : llp annoncée %u, fll %u (défaut %u), %u Mpx/s\n", m->name,
+			 m->llp, m->fll, m->fll_def, (u32)div_u64(m->pixel_rate, 1000000));
 	}
 	return 0;
 
@@ -382,14 +386,14 @@ static int imx400_init_controls(struct imx400 *imx400)
 	imx400->vblank = v4l2_ctrl_new_std(hdl, &imx400_ctrl_ops, V4L2_CID_VBLANK,
 					   mode->fll - mode->height,
 					   IMX400_FLL_MAX - mode->height, 1,
-					   mode->fll - mode->height);
+					   mode->fll_def - mode->height);
 	imx400->hblank = v4l2_ctrl_new_std(hdl, &imx400_ctrl_ops, V4L2_CID_HBLANK,
 					   mode->llp - mode->width, mode->llp - mode->width,
 					   1, mode->llp - mode->width);
 	if (imx400->hblank)
 		imx400->hblank->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 
-	exposure_max = mode->fll - IMX400_EXPOSURE_OFFSET;
+	exposure_max = mode->fll_def - IMX400_EXPOSURE_OFFSET;
 	imx400->exposure = v4l2_ctrl_new_std(hdl, &imx400_ctrl_ops, V4L2_CID_EXPOSURE,
 					     IMX400_EXPOSURE_MIN, exposure_max, 1,
 					     exposure_max / 2);
@@ -533,13 +537,13 @@ static int imx400_set_pad_format(struct v4l2_subdev *sd, struct v4l2_subdev_stat
 	*v4l2_subdev_state_get_crop(state, 0) = mode->crop;
 
 	if (fmt->which == V4L2_SUBDEV_FORMAT_ACTIVE && imx400->vblank) {
-		int exposure_max = mode->fll - IMX400_EXPOSURE_OFFSET;
+		int exposure_max = mode->fll_def - IMX400_EXPOSURE_OFFSET;
 
 		ret = __v4l2_ctrl_modify_range(imx400->vblank, mode->fll - mode->height,
 					       IMX400_FLL_MAX - mode->height, 1,
-					       mode->fll - mode->height);
+					       mode->fll_def - mode->height);
 		if (!ret)
-			ret = __v4l2_ctrl_s_ctrl(imx400->vblank, mode->fll - mode->height);
+			ret = __v4l2_ctrl_s_ctrl(imx400->vblank, mode->fll_def - mode->height);
 		if (!ret)
 			ret = __v4l2_ctrl_modify_range(imx400->exposure, IMX400_EXPOSURE_MIN,
 						       exposure_max, 1, exposure_max / 2);

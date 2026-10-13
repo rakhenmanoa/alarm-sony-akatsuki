@@ -25,4 +25,13 @@ install -m 644 "$SEQ" /usr/lib/firmware/sony/imx400-akatsuki.bin
 depmod -a
 pacman -S --needed --noconfirm v4l-utils >/dev/null 2>&1 || echo "   (v4l-utils : installer plus tard pour les essais)"
 modinfo -n imx400
+
+# libcamera (traitement logiciel) : réglages de l'IMX400 = ceux « non calibrés » +
+# niveau de noir du capteur (64 sur 10 bits = 4096 sur 16 bits), au lieu de l'estimer.
+y=/usr/share/libcamera/ipa/simple
+if [ -f "$y/uncalibrated.yaml" ]; then
+	awk '{ print } /^ *- BlackLevel:/ { sub(/-.*/, ""); print $0 "    blackLevel: 4096" }' \
+		"$y/uncalibrated.yaml" > "$y/imx400.yaml"
+	echo "   $y/imx400.yaml"
+fi
 echo "Installé. Démarrer une image CAMERA_ARRIERE=1, puis : sh scripts/tester-camera-arriere.sh"
