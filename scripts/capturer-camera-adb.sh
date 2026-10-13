@@ -47,7 +47,11 @@ adb logcat -d -b main -b system 2>/dev/null | grep -i -E 'cammw|imx400|imx258|so
 	> "$nom.logcat.txt" || true
 
 python3 "$here/decoder-cci.py" "$nom.kmsg.txt" > "$nom.registres.txt"
+if [ "$cam" = arriere ]; then
+	python3 "$here/imx400-sequences.py" "$nom.registres.txt" "$out/imx400-akatsuki.bin" || true
+fi
 echo
 head -n 1 "$nom.registres.txt"
 echo "Lignes CCI : $(grep -c 'cam_cci' "$nom.kmsg.txt" || true)"
 echo "Fichiers : $nom.kmsg.txt  $nom.registres.txt  $nom.logcat.txt"
+[ -f "$out/imx400-akatsuki.bin" ] && echo "Séquences du pilote imx400 : $out/imx400-akatsuki.bin (propre au téléphone, ne pas publier)"

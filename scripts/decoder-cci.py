@@ -13,7 +13,7 @@ pour chaque paquet envoyé au contrôleur :
 
 Paquet = octet 0 : (nombre d'octets suivants << 4) | 9 (WRITE) — 0xF9 = 11 octets et
 le paquet suivant continue sans adresse (écriture séquentielle) —, puis l'adresse du
-registre (2 octets, sauf continuation), puis les données (1 octet par registre).
+registre (1 ou 2 octets selon « addr type », sauf continuation), puis les données (1 octet par registre).
 
 Usage : decoder-cci.py imx400-cci.txt [--esclave 0x34] [--brut]
 Sortie : « temps  esclave  registre  valeur(s) », un bloc par écriture contiguë.
@@ -25,6 +25,7 @@ import sys
 RE_TEMPS = re.compile(r"^\s*(?:<\d+>)?\[\s*([0-9.]+)\]")
 RE_ANCRE = re.compile(r"cam_cci_data_queue: \d+: cmd_size (\d+) addr 0x([0-9a-fA-F]+) data 0x([0-9a-fA-F]+)")
 RE_MOT = re.compile(r"cam_cci_data_queue: \d+: LOAD_DATA_ADDR 0x([0-9a-fA-F]+), q: (\d+), len:(\d+)")
+RE_TYPE = re.compile(r"cam_cci_data_queue: \d+: addr type (\d+) data type (\d+)")
 RE_PARAM = re.compile(r"LOAD_DATA_ADDR:val 0x([0-9a-fA-F]+):0x([0-9a-fA-F]+)")
 RE_ATTENTE = re.compile(r"cam_cci_data_queue: \d+: CCI_I2C_M0_Q0_LOAD_DATA_ADDR 0x([0-9a-fA-F]+)\s*$")
 RE_SONY = re.compile(r"sony_camera_\w+: (sensor power (?:up|down) \d+|sensor I2C read id=\d+|sensor eeprom get id=\d+)")
@@ -43,6 +44,7 @@ class Decodeur:
         self.paquet = None           # [temps, adresse d'ancrage, mots, mots attendus]
         self.suite = {}              # file -> le paquet précédent annonçait une continuation
         self.anomalies = 0
+        self.octets_adresse = 2      # addr_type : 1 = octet, 2 = mot (journalisé par paquet)
 
     def fin_paquet(self):
         p = self.paquet
@@ -63,10 +65,11 @@ class Decodeur:
             self.anomalies += 1
             return
         if not self.suite.get(file_, False):
-            adr = (corps[0] << 8) | corps[1]
+            na = self.octets_adresse
+            adr = int.from_bytes(corps[:na], "big")
             if adr != ancre:
                 self.anomalies += 1
-            corps = corps[2:]
+            corps = corps[na:]
         esc = self.esclave.get(file_)
         for i, v in enumerate(corps):
             self.ecritures.append((temps, esc, ancre + i, v))
@@ -80,6 +83,11 @@ class Decodeur:
             self.fin_paquet()
             self.evenements.append((temps, m.group(1)))
             self.suite.clear()
+            return
+        m = RE_TYPE.search(l)
+        if m:
+            self.fin_paquet()
+            self.octets_adresse = 1 if m.group(1) == "1" else 2
             return
         m = RE_PARAM.search(l)
         if m:

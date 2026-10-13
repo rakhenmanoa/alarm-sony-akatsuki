@@ -12,6 +12,8 @@
 # ECRAN=dsi ajoute akatsuki-ecran-dsi.dtsi et akatsuki-tactile.dtsi (vrai écran et tactile, modules requis).
 # AUDIO=1 ajoute akatsuki-audio.dtsi (codec WCD9340, haut-parleurs WSA8815).
 # CAMERA=1 ajoute akatsuki-camera-avant.dtsi (IMX258, module imx258 requis).
+# CAMERA_ARRIERE=1 ajoute akatsuki-camera-arriere.dtsi (IMX400, module imx400 et fichier
+#   de séquences requis ; sans eux, CAMSS attend le capteur et la caméra avant aussi).
 # VIBREUR=1 ajoute akatsuki-vibreur.dtsi (haptics du PMI8998) et akatsuki-bluetooth.dtsi.
 # FLASH=1 ajoute akatsuki-flash.dtsi (flash et lampe de poche du PMI8998) et akatsuki-led.dtsi (LED de notification).
 # CAPTEURS=1 ajoute akatsuki-capteurs.dtsi (SLPI : capteurs par hexagonrpcd).
@@ -36,6 +38,7 @@ in="$1"; out="$2"; shift 2
 if [ "${ECRAN:-}" = dsi ]; then set -- "$@" "$here/../dts/akatsuki-ecran-dsi.dtsi" "$here/../dts/akatsuki-tactile.dtsi"; fi
 if [ "${AUDIO:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-audio.dtsi"; fi
 if [ "${CAMERA:-0}" != 0 ]; then set -- "$@" "$here/../dts/akatsuki-camera-avant.dtsi"; fi
+if [ "${CAMERA_ARRIERE:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-camera-arriere.dtsi"; fi
 if [ "${VIBREUR:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-vibreur.dtsi" "$here/../dts/akatsuki-bluetooth.dtsi"; fi
 if [ "${FLASH:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-flash.dtsi" "$here/../dts/akatsuki-led.dtsi"; fi
 if [ "${CAPTEURS:-0}" = 1 ]; then set -- "$@" "$here/../dts/akatsuki-capteurs.dtsi"; fi

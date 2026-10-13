@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Caméra arrière du Xperia XZ3 : capteur Sony IMX400 (19 Mpx, module SOI20BS2),
+ * pilote modules/imx400 (séquences de registres lues dans
+ * /usr/lib/firmware/sony/imx400-akatsuki.bin, construites sous LineageOS).
+ *
+ * Relevé dans l'arbre du noyau Sony sous LineageOS (13/10/2026) :
+ *   - module « sony,camera_modules@0 » : horloge MCLK0 (GPIO 13, camcc 66) à 8 MHz,
+ *     SOF GPIO 21, reset GPIO 80, maître CCI 0, i2c_freq_mode 3 (1 MHz) ;
+ *     alimentations vana = régulateur fixe GPIO 27 (cam_vana_rear), vio = régulateur
+ *     fixe GPIO 12 du PMI8998 (partagé avec l'avant), vaf = L19 (2,7 V) ;
+ *     mise sous tension : vana, vio, vaf (3 ms), horloge, sortie du reset ;
+ *   - « qcom,cam-sensor@0 » (même MCLK0) : CSIPHY 0.
+ * Capture des écritures I2C (13/10/2026) : esclave 0x10 (7 bits), 4 voies CSI-2
+ * (0x0114 = 3), RAW10, PLL de sortie 8 MHz × 169 = 1352 Mbit/s par voie
+ * (link-frequency 676 MHz). Autre esclave 0x76 sur le même bus : stabilisateur /
+ * autofocus (pas encore géré).
+ * Horloge à 24 MHz : le contrôleur d'horloge ne sait pas faire 8 MHz ; le pilote
+ * divise par 3 à l'entrée des PLL (mêmes fréquences internes).
+ */
+
+&{/soc@0/camss@acb3000} {
+	vdda-phy-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo1}>;
+	vdda-pll-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo26}>;
+	status = "okay";
+};
+
+&{/soc@0/camss@acb3000/ports/port@0} {
+	csiphy0_ep: endpoint {
+		data-lanes = <0 1 2 3>;
+		remote-endpoint = <&imx400_ep>;
+	};
+};
+
+&{/soc@0/cci@ac4a000} {
+	status = "okay";
+};
+
+&{/soc@0/rsc@179c0000/regulators-0/ldo19} {
+	regulator-min-microvolt = <2700000>;
+	regulator-max-microvolt = <2700000>;
+	status = "okay";
+};
+
+&{/soc@0/cci@ac4a000/i2c-bus@0} {
+	clock-frequency = <1000000>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	camera@10 {
+		compatible = "sony,imx400";
+		reg = <0x10>;
+
+		reset-gpios = <&{/soc@0/pinctrl@3400000} 80 1>;		/* GPIO_ACTIVE_LOW */
+		pinctrl-names = "default";
+		pinctrl-0 = <&{/soc@0/pinctrl@3400000/cam-mclk0-default-state}>;
+
+		clocks = <&{/soc@0/clock-controller@ad00000} 66>;	/* CAM_CC_MCLK0_CLK */
+		assigned-clocks = <&{/soc@0/clock-controller@ad00000} 66>;
+		assigned-clock-rates = <24000000>;
+
+		vana-supply = <&{/cam-vana-rear-regulator}>;
+		vif-supply = <&{/cam-vio-reagulator}>;
+		vaf-supply = <&{/soc@0/rsc@179c0000/regulators-0/ldo19}>;
+
+		orientation = <1>;					/* arrière */
+		rotation = <90>;
+
+		port {
+			imx400_ep: endpoint {
+				link-frequencies = /bits/ 64 <676000000>;
+				data-lanes = <1 2 3 4>;
+				remote-endpoint = <&csiphy0_ep>;
+			};
+		};
+	};
+};
