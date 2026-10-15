@@ -1,0 +1,19 @@
+IDÉE : LED Violette lors de la connexion USB (Charge/Données)
+
+APPROCHE PROPOSÉE : Moniteur de charge via sysfs (Watchdog)
+
+1. Pourquoi ne pas utiliser udev ?
+L'événement 'usb add' n'est pas toujours déclenché sur les smartphones car le téléphone est le périphérique.
+
+2. Mécanisme :
+- Surveiller le fichier /sys/class/power_supply/*/status.
+- Si le statut contient "Charging" ou "Full" -> Allumer la LED.
+- Sinon -> Éteindre la LED.
+
+3. Paramètres matériels validés :
+- LED Brightness : /sys/class/leds/rgb:status/brightness -> Valeur '100' pour allumer, '0' pour éteindre.
+- LED Couleur : /sys/class/leds/rgb:status/multi_intensity -> Valeur '255 0 255' pour le Violet.
+
+4. Implémentation :
+- Script bash tournant en boucle (sleep 2) lancé comme service systemd root.
+- Avantage : Indépendant de la session utilisateur et du mode USB (MTP/ADB).
