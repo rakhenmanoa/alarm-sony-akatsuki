@@ -1,0 +1,12 @@
+[Unit]
+Description=LED Violette lors de la charge USB
+After=network.target
+
+[Service]
+# On suppose que le script est placé dans /usr/bin/ lors de l'installation réelle
+ExecStart=/usr/bin/usb-charge-led.sh
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
